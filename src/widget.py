@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import common
 import masks
 
@@ -23,3 +25,13 @@ def mask_account_card(in_argument: str) -> str:
             return number_card
         else:
             return in_argument[: char_space + 1] + number_card
+
+
+def get_date(in_datetime: str) -> str | str:
+    try:
+        out_datatime = datetime.fromisoformat(in_datetime)
+        return out_datatime.strftime("%d.%m.%Y")
+    except ValueError:
+        return f"Неверный формат ISO: {in_datetime}"
+    except Exception as out_error:
+        return f"Некорректные данные ISO: {in_datetime}"
