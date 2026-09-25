@@ -1,5 +1,5 @@
-import masks
 import common
+import masks
 
 
 def mask_account_card(in_argument: str) -> str:
@@ -15,16 +15,11 @@ def mask_account_card(in_argument: str) -> str:
             return "Счет " + accaunt
     else:
         char_space = common.find_space_position(in_argument)
-        while in_argument[char_space +1].isalpha():
-            #print(char_space)
-            # print(in_argument[char_space +1:])
-            char_space += common.find_space_position(in_argument[char_space +1:]) + 1
+        while in_argument[char_space + 1].isalpha():
+            char_space += common.find_space_position(in_argument[char_space + 1 :]) + 1
 
-        # print(char_space)
-        number_card = masks.get_mask_card_number(in_argument[char_space +1:])
-        # print(number_card)
+        number_card = masks.get_mask_card_number(in_argument[char_space + 1 :])
         if common.find_first_digit_position(number_card) == -1:
             return number_card
         else:
-            return in_argument[:char_space +1] + number_card
-    return None
+            return in_argument[: char_space + 1] + number_card

@@ -8,7 +8,7 @@ if str(src_dir) not in sys.path:
 # import ..src.masks as masks
 import masks
 
-number_card = "7000792289606361"
+number_card = "700079228960636100"
 bank_account = "73654108430135874305"
 
 result = masks.get_mask_card_number(number_card)
