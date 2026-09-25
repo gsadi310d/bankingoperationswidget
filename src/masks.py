@@ -1,6 +1,3 @@
-# masks.py
-
-
 def get_mask_card_number(in_number_card: str) -> str:
     """Функция принимает на вход номер карты и возвращает ее маску"""
 
