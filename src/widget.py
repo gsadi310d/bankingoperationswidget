@@ -1,0 +1,30 @@
+import masks
+import common
+
+
+def mask_account_card(in_argument: str) -> str:
+
+    if in_argument.isalpha() or in_argument.isdigit() or common.find_space_position(in_argument) == -1:
+        return "Не корректные данные"
+
+    if in_argument[0:4] == "Счет":
+        accaunt = masks.get_mask_account(in_argument[5:-1])
+        if common.find_first_digit_position(accaunt) == -1:
+            return accaunt
+        else:
+            return "Счет " + accaunt
+    else:
+        char_space = common.find_space_position(in_argument)
+        while in_argument[char_space +1].isalpha():
+            #print(char_space)
+            # print(in_argument[char_space +1:])
+            char_space += common.find_space_position(in_argument[char_space +1:]) + 1
+
+        # print(char_space)
+        number_card = masks.get_mask_card_number(in_argument[char_space +1:])
+        # print(number_card)
+        if common.find_first_digit_position(number_card) == -1:
+            return number_card
+        else:
+            return in_argument[:char_space +1] + number_card
+    return None
