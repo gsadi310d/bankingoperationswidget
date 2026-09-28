@@ -1,1 +1,1 @@
-# Учебный проект по Python bankingoperationswidget
+# Учебный проект по Python bankingoperationswidget v.2
