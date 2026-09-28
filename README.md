@@ -1,2 +1,1 @@
-+# bankingoperationswidget
-# bankingoperationswidget
+# Учебный проект по Python bankingoperationswidget
