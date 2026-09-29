@@ -1,3 +1,4 @@
+"""Этот модуль будет содержать функции для работы с информацией по картам, считам и датам"""
 from datetime import datetime
 
 import common
@@ -5,7 +6,7 @@ import masks
 
 
 def mask_account_card(in_argument: str) -> str:
-
+    """Фунция шифрования номера катр и счетов"""
     if in_argument.isalpha() or in_argument.isdigit() or common.find_space_position(in_argument) == -1:
         return "Не корректные данные"
 
@@ -28,6 +29,7 @@ def mask_account_card(in_argument: str) -> str:
 
 
 def get_date(in_datetime: str) -> str | str:
+    """Функция преобразования даты из формата ISO в ДД.ММ.ГГГГ"""
     try:
         out_datatime = datetime.fromisoformat(in_datetime)
         return out_datatime.strftime("%d.%m.%Y")
