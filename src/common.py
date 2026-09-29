@@ -1,4 +1,5 @@
 def find_first_digit_position(argument: str) -> str:
+    """Функция поиска позиции первогго числа в строке"""
     for index, char in enumerate(argument):
         if char.isdigit():
             return index
@@ -6,6 +7,7 @@ def find_first_digit_position(argument: str) -> str:
 
 
 def find_space_position(argument: str) -> str:
+    """Фунция поиска позици первого пробела в строке"""
     for index, char in enumerate(argument):
         if char == " ":
             return index
