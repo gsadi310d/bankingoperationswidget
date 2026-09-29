@@ -25,3 +25,14 @@ print(executed_only)
 canceled_only = processing.filter_by_state(data, 'CANCELED')
 print(canceled_only)
 # [{'id': 594226727, 'state': 'CANCELED', ...}, {'id': 615064591, 'state': 'CANCELED', ...}]
+
+print("\n")
+# Сортировка по убыванию (по умолчанию)
+sorted_desc = processing.sort_by_date(data)
+print(sorted_desc)
+# Сначала самая свежая дата: 2019‑07‑03, затем 2018‑10‑14, 2018‑09‑12, 2018‑06‑30
+
+# Сортировка по возрастанию
+sorted_asc = processing.sort_by_date(data, in_reverse=False)
+print(sorted_asc)
+# Наоборот: сначала 2018‑06‑30, потом остальные по возрастанию даты
