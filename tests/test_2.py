@@ -1,3 +1,5 @@
+"""Модуль проверки функций widget.py"""
+
 import sys
 from pathlib import Path
 
