@@ -1,3 +1,5 @@
+"""Модуль проверки функций masks.py"""
+
 import sys
 from pathlib import Path
 
