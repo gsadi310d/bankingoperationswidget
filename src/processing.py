@@ -5,7 +5,14 @@ from typing import Any
 
 
 def filter_by_state(in_dict_transaction: list[dict[str, Any]], in_state: str = "EXECUTED") -> list[dict[str, Any]]:
-    """Функция фильтрации множества словарей по ключу 'state'"""
+    """
+    Фильтрует список словарей по значению ключа 'state'.
+
+    :param in_dict_transaction: список словарей с данными
+    :param in_state: значение для ключа 'state' (по умолчанию 'EXECUTED')
+    :return: новый список словарей, где state == переданное значение
+    """
+
     return [
         in_dict_transaction
         for in_dict_transaction in in_dict_transaction
