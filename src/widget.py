@@ -11,11 +11,11 @@ def mask_account_card(in_argument: str) -> str:
         return "Не корректные данные"
 
     if in_argument[0:4] == "Счет":
-        accaunt = masks.get_mask_account(in_argument[5:])
-        if common.find_first_digit_position(accaunt) == -1:
-            return accaunt
+        account_card = masks.get_mask_account(in_argument[5:])
+        if common.find_first_digit_position(account_card) == -1:
+            return account_card
         else:
-            return "Счет " + accaunt
+            return "Счет " + account_card
     else:
         char_space = common.find_space_position(in_argument)
         while in_argument[char_space + 1].isalpha():
