@@ -50,8 +50,6 @@ def test_get_date_valid(date_str: str) -> None:
     result = widget.get_date(date_str)
     # Для валидных дат мы ожидаем корректный вывод, а не None
     assert isinstance(result, str)
-    # Если хочешь строгую проверку формата, можно добавить:
-    # assert re.fullmatch(r"\d{2}\.\d{2}\.\d{4}", result) is not None
 
 
 invalid_dates = [

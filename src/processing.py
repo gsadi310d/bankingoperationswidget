@@ -31,13 +31,15 @@ def sort_by_date(in_dict_transaction: list[dict[str, Any]], in_reverse: bool = T
     """
 
     def parse_date(in_dict_transaction: dict[str, Any]) -> datetime:
-        # Безопасное получение даты; если ключа нет или формат неверен, вернём минимальную дату,
-        # чтобы такие записи оказались в конце при сортировке по убыванию.
+        """
+        Безопасное получение даты; если ключа нет или формат неверен, вернём минимальную дату,
+        чтобы такие записи оказались в конце при сортировке по убыванию.
+        """
         date_str = in_dict_transaction.get("date")
         if not date_str:
             return datetime.min
         try:
-            # Формат ISO 8601 с микросекундами
+            """Формат ISO 8601 с микросекундами"""
             return datetime.fromisoformat(date_str)
         except ValueError:
             return datetime.min

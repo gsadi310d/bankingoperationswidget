@@ -6,7 +6,7 @@ import pytest
 
 from src import processing
 
-# ── Фикстура ──────────────────────────────────────────────────────────
+"""── Фикстура ──────────────────────────────────────────────────────────"""
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def data() -> list[dict[str, Any]]:
     ]
 
 
-# ── filter_by_state ──────────────────────────────────────────────────
+"""── filter_by_state ──────────────────────────────────────────────────"""
 
 
 class TestFilterByState:
@@ -52,7 +52,7 @@ class TestFilterByState:
         assert len(data) == original_len
 
 
-# ── sort_by_date ──────────────────────────────────────────────────────
+"""── sort_by_date ──────────────────────────────────────────────────────"""
 
 
 class TestSortByDate:
