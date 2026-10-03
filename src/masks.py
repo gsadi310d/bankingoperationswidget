@@ -2,7 +2,7 @@ def get_mask_card_number(in_number_card: str) -> str:
     """Функция принимает на вход номер карты и возвращает ее маску"""
 
     mask_number_card = ""
-    list_number_spaces = [(number + 1) * 4 for number in range(len(in_number_card) // 4)]
+    list_number_spaces = [(number + 1) * 4 for number in range(len(in_number_card) // 4 - 1)]
 
     if len(in_number_card) < 16:
         return "Не корректный номер карты"
@@ -24,5 +24,4 @@ def get_mask_account(in_invoice_number: str) -> str:
 
     if len(in_invoice_number) < 19:
         return "Не корректный номер банковского счета"
-
     return "**" + in_invoice_number[-4::]
