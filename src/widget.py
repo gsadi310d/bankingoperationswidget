@@ -28,7 +28,7 @@ def mask_account_card(in_argument: str) -> str:
             return in_argument[: char_space + 1] + number_card
 
 
-def get_date(in_datetime: object) -> str:
+def get_date(in_datetime: str) -> str:
     """
     Преобразует строку с датой в формате ISO (с микросекундами) в формат ДД.ММ.ГГГГ.
 
@@ -39,10 +39,12 @@ def get_date(in_datetime: object) -> str:
     :param in_datetime: строка с датой в формате YYYY-MM-DDTHH:MM:SS.ffffff
     :return: строка в формате ДД.ММ.ГГГГ или сообщение об некоректных данных или формата, если дата невалидна
     """
-    if not isinstance(in_datetime, str):
-        return f"Неверный тип данных: {in_datetime}"
+    # if not isinstance(in_datetime, str):
+    #     return f"Неверный тип данных: {in_datetime}"
     try:
-        out_datatime = datetime.fromisoformat(in_datetime)
+        out_datatime = datetime.fromisoformat(str(in_datetime))
         return out_datatime.strftime("%d.%m.%Y")
+    # except TypeError:
+    #     return f"Неверный тип: {in_datetime}"
     except ValueError:
         return f"Неверный формат ISO: {in_datetime}"

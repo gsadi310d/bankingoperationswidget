@@ -27,7 +27,12 @@ no_implicit_optional = true
 strict = true
 warn_return_any = true
 warn_unreachable = true
-exclude = 'venv'
+exclude = ['venv','tests/']
+
+[flake8]
+max-line-length = 119
+ignore = ['E203', 'W503']
+exclude = [ '.git', '__pycharm__', 'venv', '.venv']
 
 [tool.black]
 line-length = 119
