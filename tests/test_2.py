@@ -72,9 +72,9 @@ def test_get_date_invalid(date_str: str) -> None:
 def test_get_date_none() -> None:
     result = widget.get_date(None)
     # Важно: это должно совпадать с тем, что возвращает get_date
-    assert result.startswith("Неверный тип данных:")
+    assert result.startswith("Неверный формат ISO:")
 
 
 def test_get_date_int() -> None:
     result = widget.get_date(12345)
-    assert result.startswith("Неверный тип данных:")
+    assert result.startswith("Неверный формат ISO:")

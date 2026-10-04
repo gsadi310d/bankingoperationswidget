@@ -4,38 +4,38 @@ from datetime import datetime
 from typing import Any
 
 
-def filter_by_state(in_dict_transaction: list[dict[str, Any]], in_state: str = "EXECUTED") -> list[dict[str, Any]]:
+def filter_by_state(list_transactions: list[dict[str, Any]], state: str = "EXECUTED") -> list[dict[str, Any]]:
     """
     Фильтрует список словарей по значению ключа 'state'.
 
-    :param in_dict_transaction: список словарей с данными
-    :param in_state: значение для ключа 'state' (по умолчанию 'EXECUTED')
+    :param list_transactions: список словарей с данными
+    :param state: значение для ключа 'state' (по умолчанию 'EXECUTED')
     :return: новый список словарей, где state == переданное значение
     """
 
     return [
-        in_dict_transaction
-        for in_dict_transaction in in_dict_transaction
-        if in_dict_transaction.get("state") == in_state
+        transaction
+        for transaction in list_transactions
+        if transaction.get("state") == state
     ]
 
 
-def sort_by_date(in_dict_transaction: list[dict[str, Any]], in_reverse: bool = True) -> list[dict[str, Any]]:
+def sort_by_date(list_transactions: list[dict[str, Any]], in_reverse: bool = True) -> list[dict[str, Any]]:
     """
     Сортирует список словарей по полю 'date' (ISO‑формат).
 
-    :param in_dict_transaction: список словарей с данными
+    :param list_transactions: список словарей с данными
     :param in_reverse: порядок сортировки (True — по убыванию, False — по возрастанию).
                     По умолчанию True (сначала самые последние операции).
     :return: новый отсортированный список (исходный не меняется)
     """
 
-    def parse_date(in_dict_transaction: dict[str, Any]) -> datetime:
+    def parse_date(dict_transactions: dict[str, Any]) -> datetime:
         """
         Безопасное получение даты; если ключа нет или формат неверен, вернём минимальную дату,
         чтобы такие записи оказались в конце при сортировке по убыванию.
         """
-        date_str = in_dict_transaction.get("date")
+        date_str = dict_transactions.get("date")
         if not date_str:
             return datetime.min
         try:
@@ -44,4 +44,4 @@ def sort_by_date(in_dict_transaction: list[dict[str, Any]], in_reverse: bool = T
         except ValueError:
             return datetime.min
 
-    return sorted(in_dict_transaction, key=parse_date, reverse=in_reverse)
+    return sorted(list_transactions, key=parse_date, reverse=in_reverse)
