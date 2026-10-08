@@ -162,7 +162,6 @@ def test_prefix_without_valid_number(input_str: str, expected_error: str) -> Non
 def test_invalid_account_number_handling(input_str: str, expected_error: str) -> None:
     """
     Проверяет ветки, когда префикс найден, но номер счёта не проходит валидацию внутри masks.get_mask_account.
-    Закрывает строки 35 и часть 60-70 в widget.py.
     """
     result = widget.mask_account_card(input_str)
     assert result == expected_error, f"Для {input_str!r} ожидалось {expected_error!r}, получено {result!r}"
