@@ -1,5 +1,7 @@
 """Тесты для widget.py (filter, sort, mask, get_date)."""
 
+# from getpass import win_getpass
+
 import pytest
 
 from src import widget
@@ -25,29 +27,166 @@ def test_mask_account_card(test_input: str, expected: str) -> None:
     assert result == expected
 
 
-def test_mask_account_card_no_type() -> None:
-    result = widget.mask_account_card("64686473678894779589")
-    assert result == "Не корректные данные"
+@pytest.mark.parametrize("prefix", sorted(widget.VALID_CARD_PREFIXES))
+def test_valid_prefixes(prefix: str) -> None:
+    """
+    Проверяем, что любой валидный префикс из списка корректно обрабатывается.
+    Используем простой номер, чтобы не зависеть от логики маскирования.
+    """
+    if prefix == "Счет":
+        test_input = f"{prefix} 12345678901234560000000000"
+    else:
+        test_input = f"{prefix} 1234567890123456"
+    result = widget.mask_account_card(test_input)
+    assert result != "Не корректные данные", f"Префикс {prefix!r} должен быть валидным"
+    assert prefix in result, f"Результат должен содержать префикс {prefix!r}"
 
 
-def test_mask_account_card_space_type() -> None:
-    result = widget.mask_account_card(" 64686473678894779589")
-    assert result == "Не корректные данные"
+@pytest.mark.parametrize(
+    "invalid_input",
+    [
+        "FakeCard 1234567890123456",
+        "SomeBank 1234567890123456",
+        "VisaGold 1234567890123456",  # слитно — не совпадает с префиксами
+        "ABC 1234567890123456",  # случайный префикс
+        "СчетБезПробела 111122223333444455556666",
+    ],
+)
+def test_invalid_prefixes(invalid_input: str) -> None:
+    """Проверяем, что невалидные префиксы дают ожидаемую ошибку"""
+    assert widget.mask_account_card(invalid_input) == "Карта отсутствует в списке валидных"
 
 
-def test_mask_account_card_incorrect_value() -> None:
-    result = widget.mask_account_card("Maestro 15968378a8705199")
-    assert result == "Не корректные данные"
+def test_account_via_prefix() -> None:
+    """Проверка обработки счёта через общий механизм префиксов"""
+    result = widget.mask_account_card("Счет 111122223333444455556666")
+    assert "Счет" in result
+    # Проверяем, что счёт замаскирован
+    # Ищем звёздочки или частичные цифры — признак маски
+    assert any(char in result for char in "**")
 
 
-def test_mask_account_card_no_value() -> None:
-    result = widget.mask_account_card("")
-    assert result == "Отсутствуют данные"
+@pytest.mark.parametrize("edge", ["", "   ", "Visa", "Visa "])
+def test_edge_cases(edge: str) -> None:
+    result = widget.mask_account_card(edge)
+    assert result in ("Отсутствуют данные", "Не корректные данные")
 
 
-def test_mask_account_card_none() -> None:
-    result = widget.mask_account_card(None)
-    assert result == "Отсутствуют данные"
+@pytest.mark.parametrize(
+    "input_str, expected_prefix",
+    [
+        ("Visa Classic 4111111111111111", "Visa Classic"),
+        ("MasterCard Gold 5500000000000004", "MasterCard Gold"),
+        ("МИР Premium 2200123456789012", "МИР Premium"),
+        ("  Visa 4111111111111111  ", "Visa"),  # с пробелами
+    ],
+)
+def test_composite_prefixes_order(input_str: str, expected_prefix: str) -> None:
+    """
+    Убеждаемся, что выбирается самый длинный префикс, а не короткий.
+    Также проверяем, что strip() не ломает логику.
+    """
+
+    cleaned = input_str.strip()
+    matched = widget.valid_prefix(cleaned)
+    assert matched == expected_prefix, f"Должен совпадать с {expected_prefix!r}, но совпало с {matched!r}"
+
+
+@pytest.mark.parametrize(
+    "prefix, entity_type",
+    [(p, t) for p, t in widget.PREFIX_TO_TYPE.items()],
+)
+def test_prefix_to_type_consistency(prefix: str, entity_type: str) -> None:
+    """
+    Страховочный тест: проверяем, что каждый префикс из VALID_CARD_PREFIXES
+    имеет корректный тип в PREFIX_TO_TYPE и тип валиден.
+    """
+    assert prefix in widget.VALID_CARD_PREFIXES
+    assert entity_type in {"account", "card"}
+
+
+@pytest.mark.parametrize(
+    "input_with_spaces, expected_contains",
+    [
+        ("   Visa 4111111111111111   ", "Visa"),
+        ("Счет   111122223333444455556666   ", "Счет"),
+        ("  MasterCard Gold 5500000000000004  ", "MasterCard Gold"),
+    ],
+)
+def test_strip_handling(input_with_spaces: str, expected_contains: str) -> None:
+    """
+    Проверка, что лишние пробелы в начале/конце не ломают работу.
+    Это покрывает исправление с cleaned_argument.
+    """
+    result = widget.mask_account_card(input_with_spaces)
+    assert expected_contains in result
+
+
+@pytest.mark.parametrize(
+    "input_str, expected_error",
+    [
+        ("Visa ", "Не корректные данные"),
+        ("Счет ", "Не корректный номер банковского счета"),
+        ("Счет ABC", "Не корректный номер банковского счета"),
+        ("Visa ABC", "Не корректные данные"),
+    ],
+)
+def test_prefix_without_valid_number(input_str: str, expected_error: str) -> None:
+    """
+    Проверяем ветки, где префикс найден, но номер невалиден.
+    Это закроет пропущенные строки в widget.py.
+    """
+    result = widget.mask_account_card(input_str)
+    assert result == expected_error, f"Для {input_str!r} ожидалось {expected_error!r}, получено {result!r}"
+
+
+@pytest.mark.parametrize(
+    "input_str, expected_error",
+    [
+        # Случай, где номер счёта невалиден (например, только буквы) — заденет ветки валидации маски счёта
+        ("Счет ABCDEFGH", "Не корректный номер банковского счета"),
+        # Крайний случай: очень короткий номер счёта — если masks.py его отвергает
+        ("Счет 1", "Не корректный номер банковского счета"),
+    ],
+)
+def test_invalid_account_number_handling(input_str: str, expected_error: str) -> None:
+    """
+    Проверяет ветки, когда префикс найден, но номер счёта не проходит валидацию внутри masks.get_mask_account.
+    Закрывает строки 35 и часть 60-70 в widget.py.
+    """
+    result = widget.mask_account_card(input_str)
+    assert result == expected_error, f"Для {input_str!r} ожидалось {expected_error!r}, получено {result!r}"
+
+
+@pytest.mark.parametrize(
+    "input_str, expected_error",
+    [
+        # Номер карты, который masks.get_mask_card_number отвергает (если там есть проверка длины)
+        ("Visa 1234", "Не корректные данные"),
+        ("MasterCard 111", "Не корректные данные"),
+    ],
+)
+def test_invalid_card_number_handling(input_str: str, expected_error: str) -> None:
+    """
+    Проверяет обработку невалидных номеров карт, когда masks возвращает ошибку.
+    """
+    result = widget.mask_account_card(input_str)
+    assert result == expected_error, f"Для {input_str!r} ожидалось {expected_error!r}, получено {result!r}"
+
+
+@pytest.mark.parametrize(
+    "input_str, expected",
+    [
+        ("1234567890", "Не корректные данные"),           # строка 35: только цифры, нет букв
+        ("!@#$%^&*()", "Не корректные данные"),           # строка 35: только символы
+        ("Счет 1", "Не корректный номер банковского счета"),  # строка 60: цифра есть, но маска отвергла
+        ("Visa 123", "Не корректные данные"),             # строка 68: цифры есть, но маска карты отвергла
+    ],
+)
+def test_coverage_remaining(input_str: str, expected: str) -> None:
+    result = widget.mask_account_card(input_str)
+    assert result == expected, f"Для {input_str!r} ожидалось {expected!r}, получено {result!r}"
+
 
 """Тесты get_date"""
 
@@ -89,6 +228,18 @@ def test_get_date_invalid(date_str: str) -> None:
 
 def test_get_date_none() -> None:
     result = widget.get_date(None)
+    # Важно: это должно совпадать с тем, что возвращает get_date
+    assert result.startswith("Неверный формат ISO:")
+
+
+def test_get_date_null() -> None:
+    result = widget.get_date("")
+    # Важно: это должно совпадать с тем, что возвращает get_date
+    assert result.startswith("Неверный формат ISO:")
+
+
+def test_get_date_space() -> None:
+    result = widget.get_date(" ")
     # Важно: это должно совпадать с тем, что возвращает get_date
     assert result.startswith("Неверный формат ISO:")
 

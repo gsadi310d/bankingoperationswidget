@@ -5,7 +5,6 @@ from typing import Literal, FrozenSet
 PREFIX_TO_TYPE: dict[str, Literal["account", "card"]] = {
     # Счёт
     "Счет": "account",
-
     # Visa
     "Visa": "card",
     "Visa Classic": "card",
@@ -16,7 +15,6 @@ PREFIX_TO_TYPE: dict[str, Literal["account", "card"]] = {
     "Visa Electron": "card",
     "Visa Business": "card",
     "Visa Corporate": "card",
-
     # MasterCard
     "MasterCard": "card",
     "MasterCard Standard": "card",
@@ -25,17 +23,14 @@ PREFIX_TO_TYPE: dict[str, Literal["account", "card"]] = {
     "MasterCard World": "card",
     "MasterCard Black": "card",
     "MasterCard Business": "card",
-
     # American Express
     "AmericanExpress": "card",
     "American Express": "card",
     "AmEx": "card",
-
     # Maestro
     "Maestro": "card",
     "Maestro Standard": "card",
     "Maestro Premier": "card",
-
     # МИР
     "МИР": "card",
     "MIR": "card",
@@ -43,24 +38,19 @@ PREFIX_TO_TYPE: dict[str, Literal["account", "card"]] = {
     "МИР Classic": "card",
     "МИР Gold": "card",
     "МИР Platinum": "card",
-
     # Discover
     "Discover": "card",
     "Discover it": "card",
-
     # JCB
     "JCB": "card",
     "JCB Standard": "card",
     "JCB Gold": "card",
-
     # Diners Club
     "DinersClub": "card",
     "Diners Club": "card",
-
     # UnionPay
     "UnionPay": "card",
     "Union Pay": "card",
-
     # Cirrus
     "Cirrus": "card",
 }
