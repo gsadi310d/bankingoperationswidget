@@ -10,9 +10,10 @@
 
 - **Язык программирования**: Python 3.12
 - **Управление зависимостями и окружением**: Poetry (`poetry.lock`, `pyproject.toml`)
-- **Тестирование**: pytest
+- **Тестирование**: pytest, покрытие тестами 100% (pytest + coverage)
 - **Статическая проверка типов**: mypy
 - **Среда разработки**: PyCharm
+- **Соблюдение стандартов качества кода** (flake8, black, isort).
 
 ---
 
@@ -47,6 +48,19 @@ poetry run pytest --cov=src --cov-report=html
 
 Рекомендуется выполнять проверку типов перед каждым коммитом.
 
+## Проверка стиля кода
+```
+poetry run flake8 .
+poetry run black --check .
+poetry run isort --check-only .
+```
+
+## Автоматическое исправление стиля
+```
+poetry run black .
+poetry run isort .
+```
+
 ---
 
 ## Реализованный функционал
@@ -62,10 +76,13 @@ poetry run pytest --cov=src --cov-report=html
   - get_mask_account(account_number: str) -> str — маскирование номера счёта.
 
 - src/common.py
-  - get_date(date_string: str) -> str — конвертация строки даты из формата ISO с микросекундами ("2024-03-11T02:26:18.671407") в формат "ДД.ММ.ГГГГ" ("11.03.2024").
-
+  - find_first_digit_position(argument: str) -> int — поиск индекса первого вхождения цифры
+  - find_first_alpha_position(argument: str) -> int — поиск индекса первого вхождения буквы
+  - find_space_position(argument: str) -> int — поиск индекса первого вхождения пробела
 - src/widget.py
   - Основная логика виджета, агрегация данных и подготовка к отображению.
+  - get_date(date_string: str) -> str — конвертация строки даты из формата ISO с микросекундами ("2024-03-11T02:26:18.671407") в формат "ДД.ММ.ГГГГ" ("11.03.2024").
+
 
 ---
 
@@ -74,13 +91,15 @@ poetry run pytest --cov=src --cov-report=html
 .
 ├── src/
 │   ├── __init__.py
+│   ├── constanse.py       # константы
 │   ├── widget.py          # основная логика виджета
 │   ├── processing.py      # фильтрация и сортировка
 │   ├── masks.py           # маскирование данных
-│   └── common.py          # общие утилиты (включая get_date)
+│   └── common.py          # общие утилиты
 ├── tests/
 │   ├── __init__.py
-│   ├── test_masks.py          # тесты маскирования
+│   ├── test_common.py          # тесты поиска индексов
+│   ├── test_masks.py           # тесты маскирования
 │   ├── test_widget.py          # тесты маскировани и работы с датами
 │   └── test_processing.py          # тесты фильтрации и сортировки
 ├── pyproject.toml         # конфигурация Poetry и метаданные проекта
@@ -115,5 +134,8 @@ poetry run pytest --cov=src --cov-report=html
    - test: add coverage for filter_by_state edge cases
 8. Отправьте Pull Request для ревью.
 
+## Лицензия
+
+Учебный проект. Код предоставлен в образовательных целях.
 
 
