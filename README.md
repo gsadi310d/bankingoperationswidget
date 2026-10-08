@@ -32,26 +32,12 @@
 
 Для запуска тестов используется pytest. Прямой запуск файлов через python не рекомендуется: это нарушает работу фикстур, плагинов и изолированного окружения.
 
-### Запуск отдельных наборов тестов
-
-- Тесты маскирования номеров карт и обработки данных (модуль masks.py):
-    ```
-    pytest tests/test_masks.py
-    ```
-- Тесты форматирования и конвертации дат (модуль widget.py):
-    ```
-    pytest tests/test_widget.py
-    ```
-- Тесты фильтрации и сортировки операций (модуль processing.py):
-    ```
-    pytest tests/test_processing.py
-    ```
-### Запуск полного набора тестов
-
-    pytest
-
-
----
+## Запуск тестов и покрытие
+```
+poetry run pytest
+poetry run pytest --cov=src --cov-report=term-missing
+poetry run pytest --cov=src --cov-report=html
+```
 
 ## Статический анализ кода
 
