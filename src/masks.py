@@ -35,7 +35,7 @@ def get_mask_account(in_invoice_number: str) -> str:
     """Функция принимает на вход номер счета и возвращает его маску"""
 
     if not in_invoice_number:
-        return "Номер банковского счета отсутсвует"
+        return "Номер банковского счета отсутствует"
 
     if not in_invoice_number.isdigit():
         return "Не корректный номер банковского счета"

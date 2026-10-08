@@ -6,6 +6,16 @@ import pytest
 
 from src import widget
 
+
+@pytest.fixture
+def valid_prefixes_sorted():
+    """
+    Возвращает список валидных префиксов, отсортированных по длине (убывание).
+    Это соответствует логике поиска самого длинного префикса в valid_prefix().
+    """
+    return sorted(widget.VALID_CARD_PREFIXES, key=len, reverse=True)
+
+
 """Тесты mask_account_card"""
 
 
@@ -27,19 +37,19 @@ def test_mask_account_card(test_input: str, expected: str) -> None:
     assert result == expected
 
 
-@pytest.mark.parametrize("prefix", sorted(widget.VALID_CARD_PREFIXES))
-def test_valid_prefixes(prefix: str) -> None:
+def test_valid_prefixes(valid_prefixes_sorted):
     """
     Проверяем, что любой валидный префикс из списка корректно обрабатывается.
-    Используем простой номер, чтобы не зависеть от логики маскирования.
+    Используем простую фикстуру для получения отсортированного списка префиксов.
     """
-    if prefix == "Счет":
-        test_input = f"{prefix} 12345678901234560000000000"
-    else:
-        test_input = f"{prefix} 1234567890123456"
-    result = widget.mask_account_card(test_input)
-    assert result != "Не корректные данные", f"Префикс {prefix!r} должен быть валидным"
-    assert prefix in result, f"Результат должен содержать префикс {prefix!r}"
+    for prefix in valid_prefixes_sorted:
+        if prefix == "Счет":
+            test_input = f"{prefix} 12345678901234560000000000"
+        else:
+            test_input = f"{prefix} 1234567890123456"
+        result = widget.mask_account_card(test_input)
+        assert result != "Не корректные данные", f"Префикс {prefix!r} должен быть валидным"
+        assert prefix in result, f"Результат должен содержать префикс {prefix!r}"
 
 
 @pytest.mark.parametrize(
@@ -177,10 +187,10 @@ def test_invalid_card_number_handling(input_str: str, expected_error: str) -> No
 @pytest.mark.parametrize(
     "input_str, expected",
     [
-        ("1234567890", "Не корректные данные"),           # строка 35: только цифры, нет букв
-        ("!@#$%^&*()", "Не корректные данные"),           # строка 35: только символы
+        ("1234567890", "Не корректные данные"),  # строка 35: только цифры, нет букв
+        ("!@#$%^&*()", "Не корректные данные"),  # строка 35: только символы
         ("Счет 1", "Не корректный номер банковского счета"),  # строка 60: цифра есть, но маска отвергла
-        ("Visa 123", "Не корректные данные"),             # строка 68: цифры есть, но маска карты отвергла
+        ("Visa 123", "Не корректные данные"),  # строка 68: цифры есть, но маска карты отвергла
     ],
 )
 def test_coverage_remaining(input_str: str, expected: str) -> None:
