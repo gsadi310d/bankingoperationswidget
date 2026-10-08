@@ -4,9 +4,8 @@ def get_mask_card_number(in_number_card: str) -> str:
     if not in_number_card:
         return "Номер карты отсутствует"
 
-    if not (
-        12 < len(in_number_card) < 20
-    ):  # длина номера карты может состовлять от 13 до 19 цифр (https://www.alfabank.by/about/wiki/finance/nomer_bankovskoy_karty_i_nomer_scheta/)
+    if not (12 < len(in_number_card) < 20):  # длина номера карты может состовлять от 13 до 19 цифр
+        # (https://www.alfabank.by/about/wiki/finance/nomer_bankovskoy_karty_i_nomer_scheta/)
         return "Не корректный номер карты"
 
     if not in_number_card.isdigit():
@@ -40,9 +39,8 @@ def get_mask_account(in_invoice_number: str) -> str:
     if not in_invoice_number.isdigit():
         return "Не корректный номер банковского счета"
 
-    if not (
-        19 < len(in_invoice_number) < 29
-    ):  # длина банковского счета может состовлять от 20 до 28 цифр (https://www.alfabank.by/about/wiki/finance/nomer_bankovskoy_karty_i_nomer_scheta/)
+    if not (19 < len(in_invoice_number) < 29):  # длина банковского счета может состовлять от 20 до 28 цифр
+        # (https://www.alfabank.by/about/wiki/finance/nomer_bankovskoy_karty_i_nomer_scheta/)
         return "Не корректный номер банковского счета"
 
     return "**" + in_invoice_number[-4::]

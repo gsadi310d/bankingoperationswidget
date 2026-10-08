@@ -1,5 +1,5 @@
 # constants.py
-from typing import Literal, FrozenSet
+from typing import FrozenSet, Literal
 
 # Префикс → тип сущности: "account" для счёта, "card" для карты
 PREFIX_TO_TYPE: dict[str, Literal["account", "card"]] = {
@@ -55,5 +55,5 @@ PREFIX_TO_TYPE: dict[str, Literal["account", "card"]] = {
     "Cirrus": "card",
 }
 
-# Все разрешённые префиксы как неизменяемое множество (удобно для mypy и производительности)
+# Все разрешённые префиксы как неизменяемое множество
 VALID_CARD_PREFIXES: FrozenSet[str] = frozenset(PREFIX_TO_TYPE.keys())

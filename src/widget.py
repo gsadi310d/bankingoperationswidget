@@ -1,9 +1,9 @@
 """#widget.py Этот модуль будет содержать функции для работы с информацией по картам, считам и датам"""
 
 from datetime import datetime
-from . import common, masks
 
-from .constants import VALID_CARD_PREFIXES, PREFIX_TO_TYPE
+from . import common, masks
+from .constants import PREFIX_TO_TYPE, VALID_CARD_PREFIXES
 
 
 def valid_prefix(in_argument: str) -> str | None:

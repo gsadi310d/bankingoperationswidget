@@ -1,6 +1,7 @@
 """Тесты для common.py"""
 
 import pytest
+
 from src import common
 
 
@@ -17,14 +18,12 @@ def common_test_strings():
         "no_digits": "no_digits_here",
         "spaces_before": "   7",
         "space_between": "a b c 9",
-
         "with_alpha": "123abc",
         "alpha_at_start": "ABC123",
         "spaces_before_alpha": "  Xyz",
         "only_digits": "123456",
         "only_special": "!@#$%^",
         "digit_then_alpha": "9a",
-
         "normal_space": "Hello World",
         "no_spaces": "NoSpaces",
         "space_at_start": " Start",
@@ -35,6 +34,7 @@ def common_test_strings():
 
 
 """Тесты для find_first_digit_position"""
+
 
 @pytest.mark.parametrize(
     "input_str, expected_index",
@@ -50,9 +50,7 @@ def common_test_strings():
 )
 def test_find_first_digit_position(input_str: str, expected_index: int) -> None:
     result = common.find_first_digit_position(input_str)
-    assert result == expected_index, (
-        f"Для {input_str!r} ожидалось {expected_index}, но получено {result}"
-    )
+    assert result == expected_index, f"Для {input_str!r} ожидалось {expected_index}, но получено {result}"
 
 
 def test_find_first_digit_position_via_fixture(common_test_strings: dict) -> None:
@@ -64,6 +62,7 @@ def test_find_first_digit_position_via_fixture(common_test_strings: dict) -> Non
 
 
 """Тесты для find_first_alpha_position"""
+
 
 @pytest.mark.parametrize(
     "input_str, expected_index",
@@ -79,9 +78,7 @@ def test_find_first_digit_position_via_fixture(common_test_strings: dict) -> Non
 )
 def test_find_first_alpha_position(input_str: str, expected_index: int) -> None:
     result = common.find_first_alpha_position(input_str)
-    assert result == expected_index, (
-        f"Для {input_str!r} ожидалось {expected_index}, но получено {result}"
-    )
+    assert result == expected_index, f"Для {input_str!r} ожидалось {expected_index}, но получено {result}"
 
 
 def test_find_first_alpha_position_via_fixture(common_test_strings: dict) -> None:
@@ -92,6 +89,7 @@ def test_find_first_alpha_position_via_fixture(common_test_strings: dict) -> Non
 
 
 """Тесты для find_space_position"""
+
 
 @pytest.mark.parametrize(
     "input_str, expected_index",
@@ -108,9 +106,7 @@ def test_find_first_alpha_position_via_fixture(common_test_strings: dict) -> Non
 )
 def test_find_space_position(input_str: str, expected_index: int) -> None:
     result = common.find_space_position(input_str)
-    assert result == expected_index, (
-        f"Для {input_str!r} ожидалось {expected_index}, но получено {result}"
-    )
+    assert result == expected_index, f"Для {input_str!r} ожидалось {expected_index}, но получено {result}"
 
 
 def test_find_space_position_via_fixture(common_test_strings: dict) -> None:
@@ -123,6 +119,7 @@ def test_find_space_position_via_fixture(common_test_strings: dict) -> None:
 
 # --- Интеграционный тест: как функции работают вместе ---
 
+
 def test_common_utils_combined_for_prefix_split(common_test_strings: dict) -> None:
     """
     Проверяет совместную работу функций на простой строке: префикс + пробел + номер.
@@ -134,7 +131,7 @@ def test_common_utils_combined_for_prefix_split(common_test_strings: dict) -> No
     assert space_idx == 4, f"Ожидался пробел на позиции 4, но найден на {space_idx}"
 
     prefix = input_str[:space_idx]
-    remainder = input_str[space_idx + 1:]
+    remainder = input_str[space_idx + 1 :]
 
     # В остатке должна быть цифра на позиции 0
     digit_idx = common.find_first_digit_position(remainder)
@@ -146,16 +143,17 @@ def test_common_utils_combined_for_prefix_split(common_test_strings: dict) -> No
 
 # --- Фикстура для граничных случаев (опционально) ---
 
+
 @pytest.fixture
 def edge_cases():
     """Набор граничных/нестандартных случаев для проверки устойчивости."""
     return [
-        "",                 # пустая строка
-        "   ",              # только пробелы
-        "\t\n",             # только спецсимволы переноса/табуляции
-        "1",                # одна цифра
-        "A",                # одна буква
-        " ",                # один пробел
+        "",  # пустая строка
+        "   ",  # только пробелы
+        "\t\n",  # только спецсимволы переноса/табуляции
+        "1",  # одна цифра
+        "A",  # одна буква
+        " ",  # один пробел
     ]
 
 
