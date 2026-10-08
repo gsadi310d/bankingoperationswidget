@@ -4,7 +4,7 @@ import pytest
 
 from src import widget
 
-# --- Тесты mask_account_card ---
+"""Тесты mask_account_card"""
 
 
 @pytest.mark.parametrize(
@@ -25,13 +25,31 @@ def test_mask_account_card(test_input: str, expected: str) -> None:
     assert result == expected
 
 
-def test_mask_account_card_account() -> None:
-    result = widget.mask_account_card("Счет 64686473678894779589")
-    assert "**" in result
-    assert "9589" in result
+def test_mask_account_card_no_type() -> None:
+    result = widget.mask_account_card("64686473678894779589")
+    assert result == "Не корректные данные"
 
 
-# --- Тесты get_date ---
+def test_mask_account_card_space_type() -> None:
+    result = widget.mask_account_card(" 64686473678894779589")
+    assert result == "Не корректные данные"
+
+
+def test_mask_account_card_incorrect_value() -> None:
+    result = widget.mask_account_card("Maestro 15968378a8705199")
+    assert result == "Не корректные данные"
+
+
+def test_mask_account_card_no_value() -> None:
+    result = widget.mask_account_card("")
+    assert result == "Отсутствуют данные"
+
+
+def test_mask_account_card_none() -> None:
+    result = widget.mask_account_card(None)
+    assert result == "Отсутствуют данные"
+
+"""Тесты get_date"""
 
 valid_dates = [
     "14:30:15",
