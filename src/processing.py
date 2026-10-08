@@ -13,11 +13,7 @@ def filter_by_state(list_transactions: list[dict[str, Any]], state: str = "EXECU
     :return: новый список словарей, где state == переданное значение
     """
 
-    return [
-        transaction
-        for transaction in list_transactions
-        if transaction.get("state") == state
-    ]
+    return [transaction for transaction in list_transactions if transaction.get("state") == state]
 
 
 def sort_by_date(list_transactions: list[dict[str, Any]], in_reverse: bool = True) -> list[dict[str, Any]]:
