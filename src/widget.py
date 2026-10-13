@@ -115,7 +115,7 @@ def get_date(in_datetime: str) -> str:
     :return: строка в формате ДД.ММ.ГГГГ или сообщение об некоректных данных или формата, если дата невалидна
     """
     # Обработка None и не-строк
-    if in_datetime is None or not isinstance(in_datetime, str):
+    if not in_datetime or not isinstance(in_datetime, str):
         return f"Неверный формат ISO: {in_datetime}"
 
     in_datetime = in_datetime.strip()

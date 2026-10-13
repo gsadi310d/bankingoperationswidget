@@ -79,9 +79,23 @@ poetry run isort .
   - find_first_digit_position(argument: str) -> int — поиск индекса первого вхождения цифры
   - find_first_alpha_position(argument: str) -> int — поиск индекса первого вхождения буквы
   - find_space_position(argument: str) -> int — поиск индекса первого вхождения пробела
+ 
 - src/widget.py
   - Основная логика виджета, агрегация данных и подготовка к отображению.
+  - valid_prefix(in_argument: str) -> str | None — Проверяет, начинается ли строка с одного из VALID_CARD_PREFIXES
+  - mask_account_card(in_argument: str) -> str — Обрабатывает строку с префиксом и номером (карты или счёта) и возвращает
+    замаскированный номер либо сообщение об ошибке
   - get_date(date_string: str) -> str — конвертация строки даты из формата ISO с микросекундами ("2024-03-11T02:26:18.671407") в формат "ДД.ММ.ГГГГ" ("11.03.2024").
+
+- src/generators
+  - filter_by_currency(transactions: Iterable[Dict[str, Any]], currency_code: str) -> Iterator[Dict[str, Any]] —  
+      Возвращает итератор транзакций, валюта которых совпадает с указанной (регистронезависимо).
+  - transaction_descriptions(transactions: Iterable[Dict[str, Any]]) -> Iterator[str] —
+      Возвращает итератор описаний операций (description). Если описание отсутствует или пусто — возвращает "Без описания".
+  - card_number_generator(start: int, end: int) -> Iterator[str] —
+      Генерирует номера банковских карт в формате XXXX XXXX XXXX XXXX в заданном числовом диапазоне.
+
+
 
 
 ---
@@ -95,13 +109,16 @@ poetry run isort .
 │   ├── widget.py          # основная логика виджета
 │   ├── processing.py      # фильтрация и сортировка
 │   ├── masks.py           # маскирование данных
+│   ├── generators.py      # набор генераторов для обработки данных транзакций 
 │   └── common.py          # общие утилиты
 ├── tests/
 │   ├── __init__.py
+│   ├── conftest.py             # фикстуры тестов
+│   ├── test_generators.py      # тесты генераторов
 │   ├── test_common.py          # тесты поиска индексов
 │   ├── test_masks.py           # тесты маскирования
 │   ├── test_widget.py          # тесты маскировани и работы с датами
-│   └── test_processing.py          # тесты фильтрации и сортировки
+│   └── test_processing.py      # тесты фильтрации и сортировки
 ├── pyproject.toml         # конфигурация Poetry и метаданные проекта
 ├── poetry.lock            # зафиксированные версии зависимостей
 └── README.md              # текущая документация
