@@ -88,3 +88,65 @@ class TestSortByDate:
         original_order = [op["id"] for op in data]
         processing.sort_by_date(data)
         assert [op["id"] for op in data] == original_order
+
+    """── sort_by_date: граничные случаи и ошибки ─────────────────────────"""
+
+
+class TestSortByDateEdgeCases:
+    def test_sort_with_none_and_empty_dates(self) -> None:
+        """
+        Проверяет ветку if not date_str:
+        None и пустая строка должны уйти в самый конец списка.
+        """
+        data = [
+            {"id": 1, "date": None},
+            {"id": 2, "date": ""},
+            {"id": 3, "date": "2019-07-03T18:35:29.512364"},
+            {"id": 4, "date": "2018-06-30T02:08:58.425572"},
+        ]
+
+        result = processing.sort_by_date(data, in_reverse=True)
+        ids = [op["id"] for op in result]
+
+        # Валидные даты должны быть первыми (по убыванию)
+        assert ids[0] == 3
+        assert ids[1] == 4
+
+        # Битые даты (None и "") должны быть в конце
+        assert set(ids[-2:]) == {1, 2}
+
+    def test_sort_with_invalid_date_format(self) -> None:
+        """
+        Проверяет блок except ValueError:
+        Невалитный формат даты должен уйти в конец списка.
+        """
+        data = [
+            {"id": 1, "date": "not-a-date"},
+            {"id": 2, "date": "2019-07-03T18:35:29.512364"},
+            {"id": 3, "date": "bad-format-12"},
+        ]
+
+        result = processing.sort_by_date(data, in_reverse=True)
+        ids = [op["id"] for op in result]
+
+        # Единственная валидная дата должна быть первой
+        assert ids[0] == 2
+
+        # Невалитные должны быть в конце (порядок между ними не важен)
+        assert set(ids[-2:]) == {1, 3}
+
+    def test_sort_with_missing_date_key(self) -> None:
+        """
+        Проверяет случай, когда ключа 'date' вообще нет в словаре.
+        dict_transactions.get("date") вернёт None → сработает ветка if not date_str.
+        """
+        data = [
+            {"id": 1},  # нет ключа date
+            {"id": 2, "date": "2019-07-03T18:35:29.512364"},
+        ]
+
+        result = processing.sort_by_date(data, in_reverse=True)
+        ids = [op["id"] for op in result]
+
+        assert ids[0] == 2  # валидная дата выше
+        assert ids[1] == 1  # запись без даты внизу
