@@ -114,12 +114,21 @@ def get_date(in_datetime: str) -> str:
     :param in_datetime: строка с датой в формате YYYY-MM-DDTHH:MM:SS.ffffff
     :return: строка в формате ДД.ММ.ГГГГ или сообщение об некоректных данных или формата, если дата невалидна
     """
-    # if not isinstance(in_datetime, str):
-    #     return f"Неверный тип данных: {in_datetime}"
+    # Обработка None и не-строк
+    if in_datetime is None or not isinstance(in_datetime, str):
+        return f"Неверный формат ISO: {in_datetime}"
+
+    in_datetime = in_datetime.strip()
+    if not in_datetime:
+        return "Неверный формат ISO: "
+
+    # Явная проверка на 24:xx:xx — в Python 3.14+ fromisoformat это принимает,
+    # но по требованиям проекта это должно считаться ошибкой.
+    if "T24:" in in_datetime or in_datetime.endswith("T24:00") or in_datetime.endswith("T24:00:00"):
+        return f"Неверный формат ISO: {in_datetime}"
+
     try:
-        out_datatime = datetime.fromisoformat(str(in_datetime))
-        return out_datatime.strftime("%d.%m.%Y")
-    # except TypeError:
-    #     return f"Неверный тип: {in_datetime}"
+        out_datetime = datetime.fromisoformat(in_datetime)
+        return out_datetime.strftime("%d.%m.%Y")
     except ValueError:
         return f"Неверный формат ISO: {in_datetime}"
