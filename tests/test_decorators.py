@@ -1,5 +1,8 @@
+import logging
 import os
+
 import pytest
+
 from src.decorators import log
 
 
@@ -162,3 +165,19 @@ def test_log_reuse_logger_no_duplicate_handlers():
     assert "dummy ok" in lines[1]
 
     os.remove(logfile)
+
+
+def test_log_decorator_clears_existing_handlers(logger_with_handler):
+
+    @log()
+    def test_func():
+        return 42
+
+    result = test_func()
+    assert result == 42
+
+    logger = logging.getLogger("test_func")
+    assert len(logger.handlers) == 1
+
+    handler = logger.handlers[0]
+    assert isinstance(handler, (logging.FileHandler, logging.StreamHandler))
