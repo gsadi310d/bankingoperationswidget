@@ -79,7 +79,8 @@ poetry run isort .
   - find_first_digit_position(argument: str) -> int — поиск индекса первого вхождения цифры
   - find_first_alpha_position(argument: str) -> int — поиск индекса первого вхождения буквы
   - find_space_position(argument: str) -> int — поиск индекса первого вхождения пробела
- 
+- src/decorators.py
+  - def log(filename: Optional[str] = None) -> Callable: — декоратор для логирования начала, конца и результата работы функции
 - src/widget.py
   - Основная логика виджета, агрегация данных и подготовка к отображению.
   - valid_prefix(in_argument: str) -> str | None — Проверяет, начинается ли строка с одного из VALID_CARD_PREFIXES
@@ -109,11 +110,13 @@ poetry run isort .
 │   ├── widget.py          # основная логика виджета
 │   ├── processing.py      # фильтрация и сортировка
 │   ├── masks.py           # маскирование данных
+│   ├── decorators.py      # содержит декораторы
 │   ├── generators.py      # набор генераторов для обработки данных транзакций 
 │   └── common.py          # общие утилиты
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py             # фикстуры тестов
+│   ├── test_decorators.py      # тесты декораторов
 │   ├── test_generators.py      # тесты генераторов
 │   ├── test_common.py          # тесты поиска индексов
 │   ├── test_masks.py           # тесты маскирования

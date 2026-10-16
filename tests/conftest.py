@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 
@@ -50,3 +52,13 @@ def transactions_with_missing_fields():
 @pytest.fixture
 def empty_transactions():
     return []
+
+
+@pytest.fixture
+def logger_with_handler():
+    """Создаёт логгер с уже добавленным хендлером, чтобы сработала ветка handlers.clear()"""
+    logger = logging.getLogger("test_func")
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.NullHandler())  # NullHandler считается хендлером
+    yield logger
+    # Опционально: можно очистить после теста, но в нашем случае декоратор сам всё почистит
