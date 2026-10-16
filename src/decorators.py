@@ -2,10 +2,13 @@
 
 import functools
 import logging
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TypeVar
+
+# TypeVar, чтобы сохранить тип возвращаемого значения функции при декорировании
+F = TypeVar("F", bound=Callable[..., Any])
 
 
-def log(filename: Optional[str] = None) -> Callable[..., Any]:
+def log(filename: Optional[str] = None) -> Callable[[F], F]:
     """
     Декоратор для логирования начала, конца и результата работы функции.
 
@@ -17,7 +20,7 @@ def log(filename: Optional[str] = None) -> Callable[..., Any]:
       - Ошибка: "<имя_функции> error: <тип_ошибки>. Inputs: (<args>, {kwargs})"
     """
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(func: F) -> F:
         # Настраиваем логгер один раз при создании декоратора
         logger = logging.getLogger(func.__name__)
         logger.setLevel(logging.INFO)
@@ -51,7 +54,11 @@ def log(filename: Optional[str] = None) -> Callable[..., Any]:
                 error_type = type(e).__name__
                 logger.error(f"{func.__name__} error: {error_type}. Inputs: {inputs_repr}")
                 raise  # Пробрасываем ошибку дальше, чтобы поведение функции не менялось
+            finally:
+                # ВАЖНО: если это FileHandler, закрываем его, чтобы освободить файл
+                if isinstance(handler, logging.FileHandler):
+                    handler.close()
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
