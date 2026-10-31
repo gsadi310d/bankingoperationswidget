@@ -43,9 +43,8 @@ def _load_cache(path: Path = CACHE_FILE) -> Dict[str, Any]:
             if not isinstance(data, dict):
                 return {}
             return data
-    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
+    except json.JSONDecodeError, UnicodeDecodeError, OSError:
         return {}
-
 
 
 def _save_cache(cache: Dict[str, Any], path: Path = CACHE_FILE) -> None:

@@ -1,17 +1,17 @@
 import json
 import os
-import requests
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, mock_open, patch
 
 import pytest
-from requests.exceptions import RequestException
+import requests
 
-from src.utils import (_get_exchange_rate, _is_cache_valid, _load_cache, _save_cache, convert_transaction_to_rub,
-                       load_transactions, normalize_transaction)
+from src.utils import (_get_exchange_rate, _is_cache_valid, _load_cache, _now_utc, _save_cache,
+                       convert_transaction_to_rub, load_transactions, normalize_transaction)
 
-# --- load_transactions: граничные случаи и валидация ---
+"""load_transactions: граничные случаи и валидация"""
+
 
 def test_load_transactions_file_not_found():
     """Файл не существует → пустой список."""
@@ -48,7 +48,7 @@ def test_load_transactions_valid_list_with_bad_items(tmp_path):
         {"id": 1, "amount": 100.5, "currency": "RUB", "type": "deposit"},
         {"id": 2, "amount": -50.0, "currency": "USD", "type": "withdrawal"},
         "not a dict",  # лишний элемент
-        None,          # лишний элемент
+        None,  # лишний элемент
     ]
     file_path.write_text(json.dumps(data))
 
@@ -99,7 +99,8 @@ def test_load_transactions_mock_json_error(mock_open, mock_exists):
     mock_load.assert_called_once_with(mock_file)
 
 
-# --- normalize_transaction: нормализация транзакций ---
+""" normalize_transaction: нормализация транзакций"""
+
 
 def test_normalize_transaction_missing_operation_amount():
     tx = {"id": 123}  # вообще нет operationAmount
@@ -135,7 +136,8 @@ def test_normalize_transaction_missing_currency_code():
     assert result["currency"] == ""
 
 
-# --- convert_transaction_to_rub: конвертация и обработка ошибок ---
+""" convert_transaction_to_rub: конвертация и обработка ошибок """
+
 
 @patch("src.utils._get_exchange_rate", return_value=25.05)
 def test_convert_eur_to_rub_success(mock_rate):
@@ -165,7 +167,8 @@ def test_convert_transaction_invalid_amount_cases():
     assert convert_transaction_to_rub({"currency": "USD"}) == 0.0
 
 
-# --- _get_exchange_rate: кэш и API ---
+""" _get_exchange_rate: кэш и API """
+
 
 @patch("src.utils._is_cache_valid", return_value=True)
 @patch("src.utils._load_cache", return_value={"USD_RUB": {"rate": 90.5, "ts": "2026-10-31T00:00:00+00:00"}})
@@ -218,8 +221,6 @@ def test_cached_key_missing_uses_api(mock_get, mock_save, mock_load, mock_is_val
 
 @patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": ""}, clear=True)
 def test_get_api_key_missing():
-    from src.utils import _get_exchange_rate  # Замени на реальное имя функции, где лежит этот код
-
     result = _get_exchange_rate("USD", "RUB")
 
     assert result is None
@@ -227,17 +228,10 @@ def test_get_api_key_missing():
 
 @patch("src.utils.requests.get")
 def test_get_exchange_rate_currency_not_found(mock_get):
-    from src.utils import _get_exchange_rate
-
     # Эмулируем ответ API, где вообще нет целевой валюты
     mock_resp = mock_get.return_value
     mock_resp.raise_for_status.return_value = None  # HTTP 200 OK
-    mock_resp.json.return_value = {
-        "rates": {
-            "EUR": 105.0,
-            "JPY": 60.0
-        }
-    }
+    mock_resp.json.return_value = {"rates": {"EUR": 105.0, "JPY": 60.0}}
 
     # Запрашиваем USD, которого нет в rates
     result = _get_exchange_rate("RUB", "USD")
@@ -247,19 +241,17 @@ def test_get_exchange_rate_currency_not_found(mock_get):
 
     mock_get.assert_called_once()
 
+
 @patch("src.utils.requests.get", side_effect=requests.ConnectionError("DNS lookup failed"))
 def test_get_exchange_rate_network_error(mock_get):
-    from src.utils import _get_exchange_rate
-
     result = _get_exchange_rate("RUB", "USD")
 
     assert result is None
     mock_get.assert_called_once()
 
+
 @patch("src.utils.requests.get")
 def test_get_exchange_rate_rate_limit_429(mock_get):
-    from src.utils import _get_exchange_rate
-
     # Создаем фейковый response с кодом 429
     mock_resp = mock_get.return_value
     mock_resp.raise_for_status.side_effect = requests.HTTPError("429 Too Many Requests", response=mock_resp)
@@ -270,28 +262,12 @@ def test_get_exchange_rate_rate_limit_429(mock_get):
     assert result is None
     mock_get.assert_called_once()
 
-# --- Кэш: загрузка и ошибки ---
 
-@patch("src.utils.Path.exists", return_value=True)
-@patch("src.utils.Path.open")
-def test_load_cache_invalid_json(mock_open, mock_exists):
-    """Невалидный JSON в кэше → пустой словарь."""
-    mock_file = MagicMock()
-    mock_file.__enter__.return_value = mock_file
-    mock_open.return_value = mock_file
-
-    mock_file.read.return_value = "{not valid json}"
-
-    result = _load_cache()
-    assert result == {}
+"""Кэш: загрузка и ошибки """
 
 
 @patch("os.path.exists", return_value=False)
 def test_load_cache_file_missing(mock_exists):
-    from pathlib import Path
-
-    from src.utils import _load_cache
-
     result = _load_cache(Path("fake.json"))
     assert result == {}
     # Опционально: проверить, что exists вызвали ровно один раз
@@ -300,21 +276,19 @@ def test_load_cache_file_missing(mock_exists):
 
 """Тесты для _load_cache: все граничные случаи"""
 
+
 @patch("src.utils.Path.exists", new_callable=PropertyMock)
 def test_load_cache_file_not_exists(mock_exists):
-    from src.utils import _load_cache
     mock_exists.return_value = False
     result = _load_cache(Path("fake.json"))
     assert result == {}
 
 
 @patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open, read_data='{"USD_RUB": {"rate": 90.5, "ts": "2026-11-01T12:00:00+00:00"}}')
+@patch(
+    "builtins.open", new_callable=mock_open, read_data='{"USD_RUB": {"rate": 90.5, "ts": "2026-11-01T12:00:00+00:00"}}'
+)
 def test_load_cache_valid_json(mock_open, mock_exists):
-    from pathlib import Path
-
-    from src.utils import _load_cache
-
     result = _load_cache(Path("fake.json"))
 
     assert isinstance(result, dict)
@@ -326,7 +300,6 @@ def test_load_cache_valid_json(mock_open, mock_exists):
 @patch("src.utils.Path.open", new_callable=mock_open, read_data="{not valid json}")
 @patch("src.utils.Path.exists", new_callable=PropertyMock)
 def test_load_cache_invalid_json(mock_exists, mock_open):
-    from src.utils import _load_cache
     mock_exists.return_value = True
     result = _load_cache(Path("fake.json"))
     assert result == {}
@@ -335,7 +308,6 @@ def test_load_cache_invalid_json(mock_exists, mock_open):
 @patch("src.utils.Path.open", new_callable=mock_open, read_data="[1, 2, 3]")
 @patch("src.utils.Path.exists", new_callable=PropertyMock)
 def test_load_cache_non_dict_root(mock_exists, mock_open):
-    from src.utils import _load_cache
     mock_exists.return_value = True
     result = _load_cache(Path("fake.json"))
     assert result == {}
@@ -345,8 +317,6 @@ def test_load_cache_non_dict_root(mock_exists, mock_open):
 @patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0))
 @patch("builtins.open")  # Нам не важно, что он открывает, главное — json.load упадет
 def test_load_cache_force_exception(mock_open, mock_json_load, mock_exists):
-    from src.utils import _load_cache
-
     result = _load_cache(Path("dummy.json"))
 
     assert result == {}
@@ -357,11 +327,10 @@ def test_load_cache_force_exception(mock_open, mock_json_load, mock_exists):
 
 
 @patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open,
-       read_data="123")  # <-- Ключевой момент: валидный JSON, но это список, а не dict
+@patch(
+    "builtins.open", new_callable=mock_open, read_data="123"
+)  # <-- Ключевой момент: валидный JSON, но это список, а не dict
 def test_load_cache_valid_json_but_not_dict(mock_open, mock_exists):
-    from src.utils import _load_cache
-
     result = _load_cache(Path("list.json"))
 
     assert result == {}  # Функция должна вернуть пустой dict, а не сам список
@@ -370,14 +339,11 @@ def test_load_cache_valid_json_but_not_dict(mock_open, mock_exists):
 
 """Тесты для _save_cache: атомарность и запись"""
 
+
 @patch("os.replace")
 @patch("json.dump")
 @patch("builtins.open", new_callable=mock_open)
 def test_save_cache_writes_correct_data(mock_open, mock_dump, mock_replace):
-    from pathlib import Path
-
-    from src.utils import _save_cache
-
     cache = {
         "USD_RUB": {"rate": 89.0, "ts": "2026-11-01T12:00:00+00:00"},
     }
@@ -400,8 +366,6 @@ def test_save_cache_writes_correct_data(mock_open, mock_dump, mock_replace):
 @patch("os.replace", side_effect=OSError("No space left on device"))
 @patch("builtins.open")
 def test_save_cache_os_replace_failure(mock_open, mock_replace):
-    from src.utils import _save_cache
-
     # Вызываем функцию — она должна тихо завершиться (вернуть None), не выбрасывая исключение
     result = _save_cache({"key": "value"}, Path("dummy.json"))
 
@@ -409,13 +373,12 @@ def test_save_cache_os_replace_failure(mock_open, mock_replace):
     mock_replace.assert_called_once()  # Убеждаемся, что os.replace действительно пытались вызвать
     mock_open.assert_called()  # И временный файл тоже пытались создать
 
+
 """_now_utc"""
 
 
 @patch("src.utils.datetime", autospec=True)
 def test_now_utc_returns_utc_time(mock_datetime):
-    from src.utils import _now_utc
-
     # Подкладываем фейковое "текущее" время, чтобы тест был детерминированным
     fake_now = datetime(2024, 5, 20, 14, 30, 0, tzinfo=timezone.utc)
     mock_datetime.now.return_value = fake_now
@@ -433,10 +396,12 @@ def test_now_utc_returns_utc_time(mock_datetime):
     assert result.tzinfo is not None
     assert result.tzinfo == timezone.utc
 
+
 """Тесты для _is_cache_valid: все форматы времени и ошибки парсинга"""
+
+
 @patch("src.utils._now_utc")
 def test_is_cache_valid_fresh_iso_with_z(mock_now):
-    from src.utils import _is_cache_valid
     ts = "2026-10-31T10:00:00Z"
     now = datetime(2026, 10, 31, 11, 0, tzinfo=timezone.utc)
     mock_now.return_value = now
@@ -446,7 +411,6 @@ def test_is_cache_valid_fresh_iso_with_z(mock_now):
 
 @patch("src.utils._now_utc")
 def test_is_cache_valid_expired(mock_now):
-    from src.utils import _is_cache_valid
     ts = "2026-10-30T10:00:00+00:00"
     now = datetime(2026, 10, 31, 11, 0, tzinfo=timezone.utc)
     mock_now.return_value = now
@@ -455,12 +419,10 @@ def test_is_cache_valid_expired(mock_now):
 
 
 def test_is_cache_valid_none_timestamp():
-    from src.utils import _is_cache_valid
     assert _is_cache_valid(None) is False
 
 
 def test_is_cache_valid_invalid_iso():
-    from src.utils import _is_cache_valid
     assert _is_cache_valid("not-a-date") is False
     assert _is_cache_valid("") is False
 
@@ -471,13 +433,10 @@ def test_is_cache_valid_invalid_iso():
 @patch("os.path.exists", return_value=True)
 @patch("builtins.open", side_effect=PermissionError("No permission"))
 def test_load_cache_read_permission_error(mock_open, mock_exists):
-    from pathlib import Path
-
-    from src.utils import _load_cache
-
     result = _load_cache(Path("locked.json"))
     assert result == {}
     mock_open.assert_called_once()
+
 
 """Тест на невалидный JSON (UnicodeDecodeError)"""
 
@@ -485,62 +444,57 @@ def test_load_cache_read_permission_error(mock_open, mock_exists):
 @patch("os.path.exists", return_value=True)
 @patch("builtins.open", new_callable=mock_open, read_data=b"\xff\xfe\x00\x01")  # Битые байты
 def test_load_cache_unicode_decode_error(mock_open, mock_exists):
-    from pathlib import Path
-
-    from src.utils import _load_cache
-
     result = _load_cache(Path("corrupted.json"))
     assert result == {}
 
-"""Тест на странный формат даты (не ISO) в _is_cache_valid"""
-def test_is_cache_valid_invalid_date_format():
-    from src.utils import _is_cache_valid
 
+"""Тест на странный формат даты (не ISO) в _is_cache_valid"""
+
+
+def test_is_cache_valid_invalid_date_format():
     # Передаем строку, которую dateutil не сможет распарсить
     assert _is_cache_valid("not-a-date-at-all") is False
     # Пустая строка тоже должна вернуть False
     assert _is_cache_valid("") is False
 
+
 """Тест на невалидный JSON в кэше"""
+
 
 @patch("os.path.exists", return_value=True)
 @patch("builtins.open", new_callable=mock_open, read_data="not json at all")
 def test_load_cache_invalid_json_content(mock_open, mock_exists):
-    from pathlib import Path
-
-    from src.utils import _load_cache
-
     result = _load_cache(Path("bad.json"))
     assert result == {}
     mock_open.assert_called_once()
 
+
 """Тест на ошибку доступа к файлу"""
+
+
 @patch("os.path.exists", return_value=True)
 @patch("builtins.open", side_effect=PermissionError("Permission denied"))
 def test_load_cache_permission_error(mock_open, mock_exists):
-    from pathlib import Path
-
-    from src.utils import _load_cache
-
     result = _load_cache(Path("locked.json"))
     assert result == {}
     mock_open.assert_called_once()
 
-"""Тест на невалидную дату"""
-def test_is_cache_valid_invalid_date_string():
-    from src.utils import _is_cache_valid
 
+"""Тест на невалидную дату"""
+
+
+def test_is_cache_valid_invalid_date_string():
     assert _is_cache_valid("2026-13-01T12:00:00Z") is False
     assert _is_cache_valid("not-a-date") is False
     assert _is_cache_valid("") is False
     assert _is_cache_valid(None) is False
 
+
 """Тест на граничные значения времени кэша"""
+
 
 @patch("src.utils._now_utc")
 def test_is_cache_valid_boundary_cases(mock_now):
-    from src.utils import _is_cache_valid
-
     base_time = datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc)
 
     # Ровно 24 часа назад — НЕ валидно (потому что условие <, а не <=)
