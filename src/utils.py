@@ -1,20 +1,15 @@
 # src/utils.py
 """
-Этот модуль содержит функции для работы с JSON-файлами транзакций
-и конвертации валют.
+Этот модуль содержит функции для работы с JSON-файлами транзакций.
 """
 
 import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-import requests
 from dateutil import parser as date_parser
-from requests.exceptions import RequestException
-
-from src.constants import API_URL
 
 CACHE_FILE = Path("data/rates_cache.json")
 CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -43,7 +38,7 @@ def _load_cache(path: Path = CACHE_FILE) -> Dict[str, Any]:
             if not isinstance(data, dict):
                 return {}
             return data
-    except json.JSONDecodeError, UnicodeDecodeError, OSError:
+    except json.JSONDecodeError, UnicodeDecodeError, OSError, FileNotFoundError:
         return {}
 
 
@@ -128,7 +123,7 @@ def load_transactions(file_path: str) -> List[Dict[str, Any]]:
     try:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
-    except json.JSONDecodeError, UnicodeDecodeError, OSError:
+    except json.JSONDecodeError, UnicodeDecodeError, OSError, FileNotFoundError:
         # Невалидный JSON или проблема с кодировкой — тоже пустой список
         return []
 
@@ -139,81 +134,6 @@ def load_transactions(file_path: str) -> List[Dict[str, Any]]:
     # Фильтруем только валидные словари
     result = [item for item in data if isinstance(item, dict)]
     return result
-
-
-def _get_exchange_rate(base_currency: str, target_currency: str) -> Optional[float]:
-    """
-    Получает курс обмена валют через внешний API с использованием локального кэша.
-
-    Аргументы:
-        base_currency (str): базовая валюта (например, 'USD').
-        target_currency (str): целевая валюта (например, 'RUB').
-
-    Возвращает:
-        float | None: курс (сколько target_currency за 1 base_currency), либо None,
-                       если курс недоступен (нет ключа, лимит API, ошибка сети и т.п.).
-
-    Поведение:
-        - Проверяет наличие EXCHANGE_RATES_API_KEY в переменных окружения.
-        - Сначала проверяет кэш: если запись есть и не старше CACHE_TTL_HOURS —
-          возвращает курс из кэша, не обращаясь к API.
-        - Если кэш отсутствует или устарел — делает один HTTP‑запрос к API.
-        - При успехе сохраняет курс и текущее UTC‑время в кэш.
-        - При любой сетевой ошибке, таймауте или HTTP‑ошибке (включая 429 Too Many Requests)
-          возвращает None и не перезаписывает кэш (чтобы не потерять валидные данные).
-    """
-    api_key = os.getenv("EXCHANGE_RATES_API_KEY")
-    if not api_key:
-        return None
-
-    cache = _load_cache()
-    cache_key = f"{base_currency}_{target_currency}"
-
-    cached_entry = cache.get(cache_key)
-    if cached_entry is not None:
-        rate = cached_entry.get("rate")
-        ts_iso = cached_entry.get("ts")
-        if _is_cache_valid(ts_iso):
-            # Курс свежий — берём из кэша, API не трогаем
-            return float(rate) if rate is not None else None
-
-    # Запрос к API
-    params = {
-        "base": base_currency,
-        "symbols": target_currency,
-    }
-    headers = {
-        "apikey": api_key,
-    }
-
-    try:
-        resp = requests.get(API_URL, params=params, headers=headers, timeout=5)
-        resp.raise_for_status()
-        data = resp.json()
-
-        rates = data.get("rates", {})
-        rate = rates.get(target_currency)
-
-        if rate is None:
-            return None
-
-        rate_float = float(rate)
-
-        # Обновляем кэш
-        cache[cache_key] = {
-            "rate": rate_float,
-            "ts": datetime.now(timezone.utc).isoformat(),
-        }
-        _save_cache(cache)
-
-        return rate_float
-    except RequestException as e:
-        if hasattr(e, "response") and e.response is not None:
-            if e.response.status_code == 429:
-                # Это лимит — не считаем критичной ошибкой, просто используем кэш
-                pass  # или можно раскомментировать для отладки:
-                # print("[INFO] Rate limit exceeded (429). Using cached rate or returning None.")
-        return None
 
 
 def normalize_transaction(tx: Dict[str, Any]) -> Dict[str, Any]:
@@ -249,38 +169,3 @@ def normalize_transaction(tx: Dict[str, Any]) -> Dict[str, Any]:
         "amount": amount_val,
         "currency": currency.upper(),
     }
-
-
-def convert_transaction_to_rub(transaction: Dict[str, Any]) -> float:
-    """
-    Конвертирует сумму транзакции в рубли по актуальному курсу.
-
-    Аргументы:
-        transaction (dict): нормализованная транзакция с полями 'amount' и 'currency'.
-
-    Возвращает:
-        float: сумма в рублях. Если конвертация невозможна — 0.0.
-
-    Поведение:
-        - Если валюта уже RUB — возвращает сумму без изменений.
-        - Получает курс через _get_exchange_rate.
-        - Если курс недоступен — возвращает 0.0.
-        - Результат округляется до 2 знаков после запятой.
-    """
-    amount = transaction.get("amount")
-    currency = (transaction.get("currency") or "").upper()
-
-    if amount is None or not isinstance(amount, (int, float)):
-        return 0.0
-
-    amount_float = float(amount)
-
-    if currency == "RUB":
-        return round(amount_float, 2)
-
-    rate = _get_exchange_rate(currency, "RUB")
-
-    if rate is None:
-        return 0.0
-
-    return round(amount_float * rate, 2)

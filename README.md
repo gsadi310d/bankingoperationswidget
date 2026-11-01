@@ -98,9 +98,11 @@ poetry run isort .
 
 - src/utils
   - load_transactions(file_path: str) -> List[Dict[str, Any]] — Загружает список транзакций из JSON-файла  
+  - normalize_transaction(tx: Dict[str, Any]) -> Dict[str, Any] —  Приводит транзакцию из сложной структуры JSON к плоскому виду.
+- src/external_api
   - _get_exchange_rate(base_currency: str, target_currency: str) -> Optional[float] — Получает курс валюты через Exchange Rates Data API.
       Возвращает итератор описаний операций (description). Если описание отсутствует или пусто — возвращает "Без описания".
-  - normalize_transaction(tx: Dict[str, Any]) -> Dict[str, Any] —  Приводит транзакцию из сложной структуры JSON к плоскому виду.
+  - convert_transaction_to_rub(transaction: Dict[str, Any]) -> float — Конвертирует сумму транзакции в рубли по актуальному курсу.
 
 
 ---
@@ -116,7 +118,8 @@ poetry run isort .
 │   ├── masks.py           # маскирование данных
 │   ├── decorators.py      # содержит декораторы
 │   ├── generators.py      # набор генераторов для обработки данных транзакций 
-│   ├── utils.py           # функции для работы с JSON-файлами транзакций и конвертации валют 
+│   ├── utils.py           # функции для работы с JSON-файлами транзакций 
+│   ├── external_api.      # функции для конвертации валют 
 │   └── common.py          # общие утилиты
 ├── tests/
 │   ├── __init__.py
@@ -126,7 +129,8 @@ poetry run isort .
 │   ├── test_common.py          # тесты поиска индексов
 │   ├── test_masks.py           # тесты маскирования
 │   ├── test_widget.py          # тесты маскировани и работы с датами
-│   ├── test_utils.py           # тесты проверки json-файлов и конвертации валюты 
+│   ├── test_utils.py           # тесты проверки json-файлов
+│   ├── test_external_api.py    # тесты проверки конвертации валюты 
 │   └── test_processing.py      # тесты фильтрации и сортировки
 ├── pyproject.toml         # конфигурация Poetry и метаданные проекта
 ├── poetry.lock            # зафиксированные версии зависимостей

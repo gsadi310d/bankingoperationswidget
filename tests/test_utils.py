@@ -1,14 +1,9 @@
 import json
-import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, mock_open, patch
 
-import pytest
-import requests
-
-from src.utils import (_get_exchange_rate, _is_cache_valid, _load_cache, _now_utc, _save_cache,
-                       convert_transaction_to_rub, load_transactions, normalize_transaction)
+from src.utils import _is_cache_valid, _load_cache, _now_utc, _save_cache, load_transactions, normalize_transaction
 
 """load_transactions: граничные случаи и валидация"""
 
@@ -134,133 +129,6 @@ def test_normalize_transaction_missing_currency_code():
     result = normalize_transaction(tx)
     assert result["amount"] == 50.0
     assert result["currency"] == ""
-
-
-""" convert_transaction_to_rub: конвертация и обработка ошибок """
-
-
-@patch("src.utils._get_exchange_rate", return_value=25.05)
-def test_convert_eur_to_rub_success(mock_rate):
-    transaction = {"amount": 200, "currency": "EUR"}
-    result = convert_transaction_to_rub(transaction)
-    assert result == pytest.approx(5010.0, rel=1e-2)
-    mock_rate.assert_called_once_with("EUR", "RUB")
-
-
-def test_convert_rub_no_api_call():
-    with patch("src.utils.requests.get") as mock_get:
-        transaction = {"amount": 123.45, "currency": "RUB"}
-        result = convert_transaction_to_rub(transaction)
-        assert result == 123.45
-        mock_get.assert_not_called()
-
-
-@patch("src.utils._get_exchange_rate", return_value=None)
-def test_convert_transaction_api_error_returns_zero(mock_rate):
-    transaction = {"amount": 100, "currency": "USD"}
-    assert convert_transaction_to_rub(transaction) == 0.0
-
-
-def test_convert_transaction_invalid_amount_cases():
-    assert convert_transaction_to_rub({"amount": None, "currency": "USD"}) == 0.0
-    assert convert_transaction_to_rub({"amount": "сто рублей", "currency": "USD"}) == 0.0
-    assert convert_transaction_to_rub({"currency": "USD"}) == 0.0
-
-
-""" _get_exchange_rate: кэш и API """
-
-
-@patch("src.utils._is_cache_valid", return_value=True)
-@patch("src.utils._load_cache", return_value={"USD_RUB": {"rate": 90.5, "ts": "2026-10-31T00:00:00+00:00"}})
-@patch("src.utils._save_cache")
-@patch("src.utils.requests.get")
-def test_get_exchange_rate_caches_once_per_day(mock_get, mock_save, mock_load, mock_is_valid):
-    os.environ["EXCHANGE_RATES_API_KEY"] = "test-key-for-tests"
-
-    rate1 = _get_exchange_rate("USD", "RUB")
-    rate2 = _get_exchange_rate("USD", "RUB")
-
-    assert rate1 == 90.5
-    assert rate2 == 90.5
-
-    mock_get.assert_not_called()
-    mock_save.assert_not_called()
-
-
-@patch("src.utils._is_cache_valid", return_value=False)
-@patch("src.utils._load_cache", return_value={"USD_RUB": {"rate": 89.0, "ts": "2000-01-01T00:00:00+00:00"}})
-@patch("src.utils._save_cache")
-@patch("src.utils.requests.get")
-def test_cache_expired_makes_new_request(mock_get, mock_save, mock_load, mock_is_valid):
-    mock_resp = mock_get.return_value
-    mock_resp.raise_for_status.return_value = None
-    mock_resp.json.return_value = {"rates": {"RUB": 91.0}}
-
-    rate = _get_exchange_rate("USD", "RUB")
-    assert rate == 91.0
-
-    mock_get.assert_called_once()
-    mock_save.assert_called_once()
-
-
-@patch("src.utils._is_cache_valid", return_value=True)
-@patch("src.utils._load_cache", return_value={})
-@patch("src.utils._save_cache")
-@patch("src.utils.requests.get")
-def test_cached_key_missing_uses_api(mock_get, mock_save, mock_load, mock_is_valid):
-    mock_resp = mock_get.return_value
-    mock_resp.raise_for_status.return_value = None
-    mock_resp.json.return_value = {"rates": {"RUB": 88.5}}
-
-    rate = _get_exchange_rate("USD", "RUB")
-    assert rate == 88.5
-
-    mock_get.assert_called_once()
-    mock_save.assert_called_once()
-
-
-@patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": ""}, clear=True)
-def test_get_api_key_missing():
-    result = _get_exchange_rate("USD", "RUB")
-
-    assert result is None
-
-
-@patch("src.utils.requests.get")
-def test_get_exchange_rate_currency_not_found(mock_get):
-    # Эмулируем ответ API, где вообще нет целевой валюты
-    mock_resp = mock_get.return_value
-    mock_resp.raise_for_status.return_value = None  # HTTP 200 OK
-    mock_resp.json.return_value = {"rates": {"EUR": 105.0, "JPY": 60.0}}
-
-    # Запрашиваем USD, которого нет в rates
-    result = _get_exchange_rate("RUB", "USD")
-
-    # Ожидаем None, потому что rate is None
-    assert result is None
-
-    mock_get.assert_called_once()
-
-
-@patch("src.utils.requests.get", side_effect=requests.ConnectionError("DNS lookup failed"))
-def test_get_exchange_rate_network_error(mock_get):
-    result = _get_exchange_rate("RUB", "USD")
-
-    assert result is None
-    mock_get.assert_called_once()
-
-
-@patch("src.utils.requests.get")
-def test_get_exchange_rate_rate_limit_429(mock_get):
-    # Создаем фейковый response с кодом 429
-    mock_resp = mock_get.return_value
-    mock_resp.raise_for_status.side_effect = requests.HTTPError("429 Too Many Requests", response=mock_resp)
-    mock_resp.status_code = 429
-
-    result = _get_exchange_rate("RUB", "USD")
-
-    assert result is None
-    mock_get.assert_called_once()
 
 
 """Кэш: загрузка и ошибки """

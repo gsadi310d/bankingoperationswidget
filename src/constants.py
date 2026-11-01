@@ -60,3 +60,5 @@ VALID_CARD_PREFIXES: FrozenSet[str] = frozenset(PREFIX_TO_TYPE.keys())
 
 # API
 API_URL = "https://api.apilayer.com/exchangerates_data/latest"
+
+SUPPORTED_CURRENCIES = {"USD", "EUR"}
