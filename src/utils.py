@@ -64,11 +64,6 @@ def _save_cache(cache: Dict[str, Any], path: Path = CACHE_FILE) -> None:
     except OSError:
         return None
 
-
-def _now_utc() -> datetime:
-    return datetime.now(timezone.utc)
-
-
 def _is_cache_valid(ts_str: str | None) -> bool:
     """
     Проверяет, действителен ли кэш на основе ISO‑строки времени.
@@ -90,7 +85,7 @@ def _is_cache_valid(ts_str: str | None) -> bool:
     try:
         # парсинг ts_str ...
         cache_time = date_parser.isoparse(ts_str)
-        now = _now_utc()
+        now = datetime.now(timezone.utc)
         return (now - cache_time) < timedelta(hours=24)
     except Exception:
         return False

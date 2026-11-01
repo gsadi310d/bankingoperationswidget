@@ -7,15 +7,22 @@
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional
+from pathlib import Path
 
-import requests
+import requests, json
 from requests.exceptions import RequestException
 
 from src.constants import API_URL, SUPPORTED_CURRENCIES
 from src.utils import _is_cache_valid, _load_cache, _save_cache
+from dateutil import parser as date_parser
 
+
+CACHE_FILE = Path("data/rates_cache.json")
+CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+CACHE_TTL_HOURS = 24
 
 def _get_exchange_rate(base_currency: str, target_currency: str) -> Optional[float]:
     """
@@ -38,9 +45,6 @@ def _get_exchange_rate(base_currency: str, target_currency: str) -> Optional[flo
         - При любой сетевой ошибке, таймауте или HTTP‑ошибке (включая 429 Too Many Requests)
           возвращает None и не перезаписывает кэш (чтобы не потерять валидные данные).
     """
-    api_key = os.getenv("EXCHANGE_RATES_API_KEY")
-    if not api_key:
-        return None
 
     # Загрузка cash файла с курсом валют
     cache = _load_cache()
@@ -93,7 +97,7 @@ def _get_exchange_rate(base_currency: str, target_currency: str) -> Optional[flo
         return None
 
 
-def convert_transaction_to_rub(transaction: Dict[str, Any]) -> float:
+def convert_transaction(transaction: Dict[str, Any]) -> float:
     """
     Конвертирует сумму транзакции в рубли по актуальному курсу.
 
@@ -114,25 +118,80 @@ def convert_transaction_to_rub(transaction: Dict[str, Any]) -> float:
     amount = transaction.get("amount")
     currency = (transaction.get("currency") or "").upper()
 
-    # Проверка корректности суммы
-    if amount is None or not isinstance(amount, (int, float)):
+    try:
+        amount_float = float(amount)
+        # Если уже рубли — возвращаем как есть
+        if currency == "RUB":
+            return round(amount_float, 2)
+
+        # По заданию: конвертируем только USD и EUR
+        if currency not in SUPPORTED_CURRENCIES:
+            # Можно добавить логирование: «Валюта не поддерживается: {currency}»
+            return 0.0
+
+        api_key = os.getenv("EXCHANGE_RATES_API_KEY")
+        if not api_key:
+            return None
+
+        # Если файла нет — Запрос к API с записью в cash
+        if not CACHE_FILE.exists():
+            #
+            params = {"base": currency, "symbols": "RUB", }
+            try:
+                resp = requests.get(API_URL, params=params, headers=api_key, timeout=5)
+                resp.raise_for_status()
+                data = resp.json()
+
+                rates = data.get("rates", {})
+                rate = rates.get("RUB")
+
+                if rate is None:
+                    return None
+
+                rate_float = float(rate)
+
+                # Обновляем кэш
+                tmp_path = CACHE_FILE.with_suffix(".json.tmp")
+                try:
+                    with open(tmp_path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                    # атомарная замена
+                    os.replace(str(tmp_path), str(CACHE_FILE))
+                except OSError:
+                    return None
+                CACHE_FILE[f"{currency}_RUB"] = {
+                    "rate": rate_float,
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                }
+                _save_cache(cache)
+
+        # Если файл есть — проверяем на актуальность
+        if CACHE_FILE.exists():
+            load_cash_file = json.load(CACHE_FILE)
+            cached_entry = load_cash_file.get(f"{currency}_RUB")
+            if cached_entry is not None:
+                rate = cached_entry.get("rate")
+                ts_iso = cached_entry.get("ts")
+                cache_time = date_parser.isoparse(ts_iso)
+                now = datetime.now(timezone.utc)
+                if (now - cache_time) < timedelta(hours=24):
+                    return float(rate) * amount_float if rate is not None else None
+
+
+        # Если курс не удалось получить — возвращаем 0.0 (без падения)
+        if rate is None:
+            return 0.0
+
+
+
+        if currency == "USD":
+            rate = _get_exchange_rate(currency, "RUB")
+
+        if currency == "EUR":
+            rate = _get_exchange_rate(currency, "RUB")
+
+
+
+        return round(amount_float * rate, 2)
+    except Exception:
         return 0.0
-
-    amount_float = float(amount)
-
-    # Если уже рубли — возвращаем как есть
-    if currency == "RUB":
-        return round(amount_float, 2)
-
-    # По заданию: конвертируем только USD и EUR
-    if currency not in SUPPORTED_CURRENCIES:
-        # Можно добавить логирование: «Валюта не поддерживается: {currency}»
-        return 0.0
-
-    rate = _get_exchange_rate(currency, "RUB")
-
-    # Если курс не удалось получить — возвращаем 0.0 (без падения)
-    if rate is None:
-        return 0.0
-
-    return round(amount_float * rate, 2)
