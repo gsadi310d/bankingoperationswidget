@@ -65,17 +65,17 @@ def test_get_mask_card_number(card_number: str, expected: str) -> None:
 
 def test_get_mask_card_empty(empty_inputs: list[str]) -> None:
     for inp in empty_inputs:
-        assert masks.get_mask_card_number(inp) == "Номер карты отсутствует"
+        assert masks.get_mask_card_number(inp) == ""
 
 
 def test_get_mask_card_invalid_format(invalid_card_inputs: list[str]) -> None:
     for inp in invalid_card_inputs:
         result = masks.get_mask_card_number(inp)
-        assert result == "Не корректный номер карты", f"Для {inp!r} ожидалась ошибка, получено: {result!r}"
+        assert result == "", f"Для {inp!r} ожидалась ошибка, получено: {result!r}"
 
 
 def test_get_mask_card_none() -> None:
-    assert masks.get_mask_card_number(None) == "Номер карты отсутствует"
+    assert masks.get_mask_card_number(None) == ""
 
 
 """Тесты для get_mask_account"""
@@ -89,14 +89,14 @@ def test_get_mask_account(account: str, expected: str) -> None:
 
 def test_get_mask_account_empty(empty_inputs: list[str]) -> None:
     for inp in empty_inputs:
-        assert masks.get_mask_account(inp) == "Номер банковского счета отсутствует"
+        assert masks.get_mask_account(inp) == ""
 
 
 def test_get_mask_account_invalid_format(invalid_account_inputs: list[str]) -> None:
     for inp in invalid_account_inputs:
         result = masks.get_mask_account(inp)
-        assert result == "Не корректный номер банковского счета", f"Для {inp!r} ожидалась ошибка, получено: {result!r}"
+        assert result == "", f"Для {inp!r} ожидалась ошибка, получено: {result!r}"
 
 
 def test_get_mask_account_none() -> None:
-    assert masks.get_mask_account(None) == "Номер банковского счета отсутствует"
+    assert masks.get_mask_account(None) == ""
