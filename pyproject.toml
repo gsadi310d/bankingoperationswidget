@@ -23,6 +23,10 @@ isort = ">=9.0.1,<10.0.0"
 pytest = ">=9.1.1,<10.0.0"
 pytest-cov = "^5.0.0"
 
+[tool.poetry.dependencies]
+python-dotenv = "^1.2.4"
+requests = "^2.34.2"
+python-dateutil = "^3.0.0"
 [tool.mypy]
 check_untyped_defs = true
 disallow_untyped_defs = true
@@ -38,6 +42,7 @@ ignore = ['E203', 'W503']
 exclude = ['.git', '__pycharm__', 'venv', '.venv']
 
 [tool.black]
+target-version = ["py314"]
 line-length = 119
 exclude = '''
 (
