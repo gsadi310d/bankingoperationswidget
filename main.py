@@ -2,7 +2,7 @@
 
 from dotenv import load_dotenv
 
-from src import external_api, utils, masks
+from src import masks, utils
 
 load_dotenv()
 
@@ -31,3 +31,7 @@ print(masks.get_mask_account(""))
 print(masks.get_mask_account("35383"))
 print(masks.get_mask_account("35383asdfg4447895560"))
 
+print(utils.load_transactions("data/operations.json"))
+print(utils.load_transactions(""))
+print(utils.load_transactions("operations.json"))
+print(utils.load_transactions("data/rates_cache.json"))

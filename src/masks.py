@@ -4,6 +4,7 @@ from src.module_logging import setup_logger
 
 logger = setup_logger("masks", "logs/masks.log")
 
+
 def get_mask_card_number(in_number_card: str) -> str:
     """Функция принимает на вход номер карты и возвращает ее маску"""
 

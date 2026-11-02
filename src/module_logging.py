@@ -3,7 +3,8 @@
 import logging
 from pathlib import Path
 
-def setup_logger(name: str, log_file: str, level: int = logging.INFO) -> logging.Logger:
+
+def setup_logger(name: str, log_file: str, level: int = logging.DEBUG) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
