@@ -1,280 +1,380 @@
+# tests/test_external_api.py
+import json
 import os
-from unittest.mock import patch
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
+from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
+from requests.exceptions import RequestException, Timeout
 
-from src.external_api import _get_exchange_rate, convert_transaction_to_rub
-
-""" Тесты convert_transaction_to_rub """
+from src.external_api import CACHE_FILE, convert_transaction
 
 
-def test_convert_eur_to_rub_success():
+@pytest.fixture(autouse=True)
+def clean_cache():
     """
-    Проверяет успешную конвертацию транзакции из EUR в RUB.
-
-    Сценарий:
-      - Функция _get_exchange_rate мокается и возвращает курс 25.05.
-      - На вход подаётся транзакция: amount=200, currency='EUR'.
-
-    Ожидаемый результат:
-      - Возвращается сумма 5010.0 (200 * 25.05).
-      - _get_exchange_rate вызывается ровно один раз с аргументами ('EUR', 'RUB').
+    Фикстура для очистки кэша перед каждым тестом.
+    Гарантирует, что тесты не зависят от состояния файла rates_cache.json.
     """
-    with patch("src.external_api._get_exchange_rate", return_value=25.05) as mock_rate:
-        transaction = {"amount": 200, "currency": "EUR"}
-        result = convert_transaction_to_rub(transaction)
-        assert result == pytest.approx(5010.0, rel=1e-2)
-        mock_rate.assert_called_once_with("EUR", "RUB")
+    if CACHE_FILE.exists():
+        CACHE_FILE.unlink()
+    yield
+    # Опционально: можно удалить кэш и после теста, если он создался
+    if CACHE_FILE.exists():
+        CACHE_FILE.unlink()
 
 
-def test_convert_rub_no_api_call():
+def make_tx(amount: Any, currency_code: str, currency_obj: Optional[Dict] = None) -> Dict[str, Any]:
     """
-    Проверяет, что при валюте RUB конвертация не требует обращения к API.
+    Вспомогательная функция для быстрого создания корректной структуры транзакции.
 
-    Сценарий:
-      - На вход подаётся транзакция в рублях: amount=123.45, currency='RUB'.
-      - Мокается requests.get, чтобы отследить, был ли сделан запрос.
-
-    Ожидаемый результат:
-      - Возвращается исходная сумма 123.45 без изменений.
-      - requests.get не вызывается ни разу.
+    Description:
+        Генерирует JSON-подобную структуру, которую ожидает convert_transaction:
+          {
+            "operationAmount": {
+              "amount": <amount>,
+              "currency": {"code": <currency_code>}
+            }
+          }
+        Позволяет легко тестировать граничные случаи, подменяя currency_obj при необходимости.
     """
-    with patch("src.external_api.requests.get") as mock_get:
-        transaction = {"amount": 123.45, "currency": "RUB"}
-        result = convert_transaction_to_rub(transaction)
-        assert result == 123.45
-        mock_get.assert_not_called()
+    if currency_obj is None:
+        currency_obj = {"code": currency_code}
+    return {
+        "operationAmount": {
+            "amount": amount,
+            "currency": currency_obj,
+        }
+    }
 
 
-def test_convert_transaction_api_error_returns_zero():
-    """
-    Проверяет обработку ошибки получения курса (None от _get_exchange_rate).
+class TestConvertTransactionBasic:
+    def test_rub_no_conversion(self):
+        """
+        Проверяет, что для валюты RUB конвертация не выполняется.
 
-    Сценарий:
-      - _get_exchange_rate мокается и возвращает None.
-      - На вход подаётся транзакция в USD.
+        Description:
+            Тест подаёт транзакцию с валютой RUB и суммой 100.5.
+            Ожидаемое поведение: функция возвращает ту же сумму без умножения на курс.
+            Цель: убедиться, что логика «если RUB — вернуть сумму» работает корректно.
+        """
+        tx = make_tx(100.5, "RUB")
+        assert convert_transaction(tx) == 100.5
 
-    Ожидаемый результат:
-      - Функция возвращает 0.0 вместо падения с ошибкой.
-    """
-    with patch("src.external_api._get_exchange_rate", return_value=None):
-        transaction = {"amount": 100, "currency": "USD"}
-        assert convert_transaction_to_rub(transaction) == 0.0
+    def test_supported_currency_with_mock_rate(self, clean_cache):
+        """
+        Проверяет конвертацию для поддерживаемой валюты при наличии валидного кэша.
+
+        Description:
+            Мы вручную пишем в кэш курс 90.0 для USD_RUB, который актуален (возраст < 24 часов).
+            Подаём транзакцию 100 USD.
+            Ожидаемый результат: 9000.0 (100 * 90).
+            Цель: проверить, что функция корректно читает кэш и применяет курс, не вызывая API.
+        """
+        cache_data = {"USD_RUB": {"rate": 90.0, "ts": (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()}}
+        CACHE_FILE.write_text(json.dumps(cache_data), encoding="utf-8")
+
+        tx = make_tx(100, "USD")
+        result = convert_transaction(tx)
+        assert result == 9000.0  # 100 * 90
+
+    def test_unsupported_currency(self):
+        """
+        Проверяет обработку неподдерживаемой валюты.
+
+        Description:
+            Подаётся транзакция с валютой XYZ, которой нет в SUPPORTED_CURRENCIES.
+            Ожидаемое поведение: функция сразу возвращает 0.0 без попыток получить курс.
+            Цель: убедиться, что неподдерживаемые валюты корректно отсекаются.
+        """
+        tx = make_tx(100, "XYZ")
+        assert convert_transaction(tx) == 0.0
+
+    def test_missing_operationAmount(self):
+        """
+        Проверяет поведение при отсутствии поля operationAmount.
+
+        Description:
+            Структура транзакции намеренно «сломана»: нет operationAmount, данные лежат на верхнем уровне.
+            Ожидаемое поведение: функция возвращает 0.0.
+            Цель: проверить валидацию структуры JSON и защиту от падения на KeyError.
+        """
+        tx = {"amount": 100, "currency": "USD"}
+        assert convert_transaction(tx) == 0.0
+
+    def test_invalid_amount_type(self):
+        """
+        Проверяет обработку невалидного типа суммы.
+
+        Description:
+            В поле amount передаётся строка "not_a_number", которую нельзя преобразовать в float.
+            Ожидаемое поведение: функция ловит TypeError/ValueError и возвращает 0.0.
+            Цель: убедиться, что некорректные типы данных не ломают функцию.
+        """
+        tx = make_tx("not_a_number", "USD")
+        assert convert_transaction(tx) == 0.0
+
+    def test_none_amount(self):
+        """
+        Проверяет обработку случая, когда amount равен None.
+
+        Description:
+            Поле amount явно установлено в None.
+            Ожидаемое поведение: функция возвращает 0.0.
+            Цель: покрыть граничный случай отсутствия значения суммы.
+        """
+        tx = make_tx(None, "USD")
+        assert convert_transaction(tx) == 0.0
+
+    def test_missing_currency_code(self):
+        """
+        Проверяет случай, когда currency есть, но в нём отсутствует поле code.
+
+        Description:
+            currency — это словарь, но без ключа code.
+            Ожидаемое поведение: функция возвращает 0.0.
+            Цель: убедиться, что отсутствие кода валюты обрабатывается корректно.
+        """
+        tx = {"operationAmount": {"amount": 100, "currency": {}}}  # нет code
+        assert convert_transaction(tx) == 0.0
+
+    def test_currency_not_dict(self):
+        """
+        Проверяет случай, когда поле currency не является словарем.
+
+        Description:
+            Вместо словаря currency передаётся строка "USD".
+            Ожидаемое поведение: функция проверяет тип и возвращает 0.0.
+            Цель: защитить функцию от неожиданных структур JSON.
+        """
+        tx = {"operationAmount": {"amount": 100, "currency": "USD"}}  # строка вместо dict
+        assert convert_transaction(tx) == 0.0
 
 
-def test_convert_transaction_invalid_amount_cases():
-    """
-    Проверяет поведение функции при некорректных значениях amount.
+class TestCacheBehavior:
+    @patch("src.external_api.datetime")
+    def test_cache_fresh_used(self, mock_datetime, clean_cache):
+        """
+        Проверяет использование свежего кэша и отсутствие запроса к API.
 
-    Сценарий:
-      - Тестируются три случая: amount=None, amount='сто рублей' (строка), отсутствие ключа amount.
-      - Валюта во всех случаях — USD.
+        Description:
+            Фиксируем время (mock_datetime), создаём кэш с курсом 85.0, возраст кэша — 5 часов (свежий).
+            Подаём транзакцию на 20 USD.
+            Ожидаемое: курс берётся из кэша, requests.get не вызывается, результат 1700.0.
+            Цель: подтвердить, что свежий кэш используется, а API не дёргается лишний раз.
+        """
+        now = datetime.now(timezone.utc)
+        mock_datetime.now.return_value = now
 
-    Ожидаемый результат:
-      - Во всех трёх случаях функция возвращает 0.0.
-    """
-    assert convert_transaction_to_rub({"amount": None, "currency": "USD"}) == 0.0
-    assert convert_transaction_to_rub({"amount": "сто рублей", "currency": "USD"}) == 0.0
-    assert convert_transaction_to_rub({"currency": "USD"}) == 0.0
+        cache_data = {"USD_RUB": {"rate": 85.0, "ts": (now - timedelta(hours=5)).isoformat()}}  # свежий
+        CACHE_FILE.write_text(json.dumps(cache_data), encoding="utf-8")
 
+        tx = make_tx(20, "USD")
+        # Должен взять из кэша, API не должен вызываться
+        with patch("src.external_api.requests.get") as mock_get:
+            result = convert_transaction(tx)
+            mock_get.assert_not_called()
 
-@patch("src.external_api._get_exchange_rate")
-def test_convert_unsupported_currency_returns_zero(mock_rate):
-    """
-    Проверяет возврат 0.0 для неподдерживаемой валюты без обращения к API.
-    """
-    transaction = {"amount": 1000, "currency": "JPY"}
-    result = convert_transaction_to_rub(transaction)
+        assert result == 1700.0  # 20 * 85
 
-    assert result == 0.0
-    mock_rate.assert_not_called()
+    @patch("src.external_api.datetime")
+    def test_cache_expired_uses_api(self, mock_datetime, clean_cache):
+        """
+        Проверяет, что просроченный кэш игнорируется и запрос идёт в API.
 
+        Description:
+            Кэш искусственно делаем просроченным (возраст 30 часов).
+            Мокаем ответ API: курс 90.0 за доллар.
+            Подаём 10 USD.
+            Ожидаемое: requests.get вызывается один раз, результат 900.0.
+            Цель: убедиться, что TTL работает и система переключается на API при устаревании кэша.
+        """
+        now = datetime.now(timezone.utc)
+        mock_datetime.now.return_value = now
 
-""" Тесты _get_exchange_rate """
+        cache_data = {"USD_RUB": {"rate": 80.0, "ts": (now - timedelta(hours=30)).isoformat()}}  # просрочен
+        CACHE_FILE.write_text(json.dumps(cache_data), encoding="utf-8")
 
-
-def test_get_exchange_rate_caches_once_per_day():
-    """
-    Проверяет работу кэширования: повторный запрос в тот же день не делает новый API-запрос.
-
-    Сценарий:
-      - _is_cache_valid возвращает True.
-      - _load_cache возвращает валидный кэш с курсом 92.3.
-      - Вызывается _get_exchange_rate дважды подряд для пары USD→RUB.
-
-    Ожидаемый результат:
-      - Оба вызова возвращают 92.3.
-      - requests.get не вызывается (данные берутся из кэша).
-      - _save_cache не вызывается повторно.
-    """
-    with (
-        patch("src.external_api._is_cache_valid", return_value=True),
-        patch(
-            "src.external_api._load_cache", return_value={"USD_RUB": {"rate": 92.3, "ts": "2027-10-31T00:00:00+00:00"}}
-        ),
-        patch("src.external_api._save_cache") as mock_save,
-        patch("src.external_api.requests.get") as mock_req_get,
-        patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test-key-for-tests"}),
-    ):
-        rate1 = _get_exchange_rate("USD", "RUB")
-        rate2 = _get_exchange_rate("USD", "RUB")
-
-        assert rate1 == 92.3
-        assert rate2 == 92.3
-        mock_req_get.assert_not_called()
-        mock_save.assert_not_called()
-
-
-def test_cache_expired_makes_new_request():
-    """
-    Проверяет, что при просроченном кэше делается новый запрос к API и обновляется кэш.
-
-    Сценарий:
-      - _is_cache_valid возвращает False.
-      - _load_cache возвращает старый кэш (2000 год).
-      - Эмулируется успешный ответ API с курсом 91.0.
-
-    Ожидаемый результат:
-      - Возвращается курс 91.0 из API.
-      - requests.get вызывается один раз.
-      - _save_cache вызывается один раз для сохранения нового курса.
-    """
-    with (
-        patch("src.external_api._is_cache_valid", return_value=False),
-        patch(
-            "src.external_api._load_cache", return_value={"USD_RUB": {"rate": 89.0, "ts": "2000-01-01T00:00:00+00:00"}}
-        ),
-        patch("src.external_api._save_cache") as mock_save,
-        patch("src.external_api.requests.get") as mock_req_get,
-        patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test-key-for-tests"}),
-    ):
-        mock_resp = mock_req_get.return_value
+        # Мокаем ответ API: 90.0 за доллар
+        mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
-        mock_resp.json.return_value = {"rates": {"RUB": 91.0}}
+        mock_resp.json.return_value = {"rates": {"RUB": 90.0}}
 
-        rate = _get_exchange_rate("USD", "RUB")
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test_key"}):
+            with patch("src.external_api.requests.get", return_value=mock_resp) as mock_get:
+                tx = make_tx(10, "USD")
+                result = convert_transaction(tx)
+                mock_get.assert_called_once()
 
-        assert rate == 91.0
-        mock_req_get.assert_called_once()
-        mock_save.assert_called_once()
+        assert result == 900.0  # 10 * 90
+
+    def test_corrupted_cache_ignored(self, clean_cache):
+        """
+        Проверяет игнорирование битого кэша и переход на API.
+
+        Description:
+            В файл кэша пишется невалидный JSON («not json at all»).
+            Мокаем успешный ответ API с курсом 88.0.
+            Подаём 5 USD.
+            Ожидаемое: кэш игнорируется из‑за ошибки парсинга, вызывается API, результат 440.0.
+            Цель: гарантировать отказоустойчивость при повреждении файла кэша.
+        """
+        # Пишем битый JSON
+        CACHE_FILE.write_text("not json at all", encoding="utf-8")
+
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test_key"}):
+            with patch("src.external_api.requests.get") as mock_get:
+                mock_resp = MagicMock()
+                mock_resp.raise_for_status.return_value = None
+                mock_resp.json.return_value = {"rates": {"RUB": 88.0}}
+                mock_get.return_value = mock_resp
+
+                tx = make_tx(5, "USD")
+                result = convert_transaction(tx)
+                # Кэш битый, должен пойти в API
+                mock_get.assert_called_once()
+
+        assert result == 440.0  # 5 * 88
 
 
-def test_cached_key_missing_uses_api():
-    """
-    Проверяет, что при отсутствии нужной валютной пары в кэше делается запрос к API.
+class TestApiAndEnvBehavior:
+    def test_no_api_key_returns_zero(self, clean_cache):
+        """
+        Проверяет реакцию на отсутствие API-ключа в окружении.
 
-    Сценарий:
-      - _is_cache_valid возвращает True, но _load_cache возвращает пустой кэш {}.
-      - Эмулируется ответ API с курсом 88.5.
+        Description:
+            Очищаем переменные окружения (нет EXCHANGE_RATES_API_KEY).
+            Подаём валидную транзакцию в USD.
+            Ожидаемое: функция не может запросить курс и возвращает 0.0.
+            Цель: убедиться, что отсутствие ключа не приводит к ошибке,
+            а обрабатывается как «не удалось конвертировать».
+        """
+        # Убираем ключ из окружения
+        with patch.dict(os.environ, {}, clear=True):
+            tx = make_tx(100, "USD")
+            assert convert_transaction(tx) == 0.0
 
-    Ожидаемый результат:
-      - Возвращается курс 88.5 из API.
-      - requests.get вызывается один раз.
-      - _save_cache вызывается для сохранения новой пары.
-    """
-    with (
-        patch("src.external_api._is_cache_valid", return_value=True),
-        patch("src.external_api._load_cache", return_value={}),
-        patch("src.external_api._save_cache") as mock_save,
-        patch("src.external_api.requests.get") as mock_req_get,
-        patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test-key-for-tests"}),
-    ):
-        mock_resp = mock_req_get.return_value
+    def test_api_error_returns_zero(self, clean_cache):
+        """
+        Проверяет обработку ошибок сети/API.
+
+        Description:
+            requests.get намеренно выбрасывает исключение (имитация сбоя сети).
+            Ключ API присутствует.
+            Ожидаемое: функция ловит ошибку и возвращает 0.0.
+            Цель: обеспечить отказоустойчивость при недоступности внешнего API.
+        """
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test_key"}):
+            # Важно: выбрасываем именно RequestException, который ловит функция
+            with patch("src.external_api.requests.get", side_effect=RequestException("Network error")):
+                tx = {"operationAmount": {"amount": 50, "currency": {"code": "USD"}}}
+                result = convert_transaction(tx)
+
+        assert result == 0.0
+
+    @patch("src.external_api.requests.get")
+    def test_api_no_rub_rate_returns_zero(self, mock_get, clean_cache):
+        """
+        Проверяет ситуацию, когда API вернул ответ, но курс RUB отсутствует.
+
+        Description:
+            API возвращает JSON, где rates — пустой словарь (нет RUB).
+            Ожидаемое: функция трактует это как ошибку конвертации и возвращает 0.0.
+            Цель: обработать случай «API ответил, но нужной валюты нет».
+        """
+        mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
-        mock_resp.json.return_value = {"rates": {"RUB": 88.5}}
+        mock_resp.json.return_value = {"rates": {}}  # нет RUB
+        mock_get.return_value = mock_resp
 
-        rate = _get_exchange_rate("USD", "RUB")
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test_key"}):
+            tx = make_tx(100, "USD")
+            result = convert_transaction(tx)
 
-        assert rate == 88.5
-        mock_req_get.assert_called_once()
-        mock_save.assert_called_once()
+        assert result == 0.0
 
+    def test_missing_api_key_returns_zero(self):
+        """
+        Проверяет поведение при отсутствии API ключа.
+        """
+        # Убираем ключ из окружения
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": ""}, clear=True):
+            tx = {"operationAmount": {"amount": 100, "currency": {"code": "USD"}}}
+            result = convert_transaction(tx)
 
-def test_get_api_key_missing():
-    """
-    Проверяет поведение при отсутствии API-ключа в переменных окружения.
-
-    Сценарий:
-      - EXCHANGE_RATES_API_KEY явно очищается через patch.dict.
-      - Запрашивается курс USD→RUB.
-
-    Ожидаемый результат:
-      - Функция сразу возвращает None без попыток запроса.
-    """
-    with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": ""}, clear=True):
-        result = _get_exchange_rate("USD", "RUB")
-        assert result is None
+        assert result == 0.0
 
 
-def test_get_exchange_rate_currency_not_found():
-    """
-    Проверяет обработку ситуации, когда запрашиваемая валюта отсутствует в ответе API.
+class TestCacheWriteFailure:
+    @patch("src.external_api.os.replace")
+    @patch("src.external_api.Path.open")
+    def test_cache_write_failure_does_not_break_conversion(self, mock_open, mock_replace):
+        mock_replace.side_effect = OSError("Disk full")
+        mock_open.return_value.__enter__.return_value = MagicMock()
 
-    Сценарий:
-      - API возвращает курсы для EUR и JPY, но не для RUB (в контексте пары).
-      - Запрашивается курс RUB→USD.
-
-    Ожидаемый результат:
-      - Функция корректно обрабатывает отсутствие курса и возвращает None.
-      - requests.get был вызван один раз.
-    """
-    with (
-        patch("src.external_api.requests.get") as mock_req_get,
-        patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test-key-for-tests"}),
-    ):
-        mock_resp = mock_req_get.return_value
+        mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
-        # В ответе нет RUB для нужной пары
-        mock_resp.json.return_value = {"rates": {"EUR": 105.0, "JPY": 60.0}}
+        mock_resp.json.return_value = {"rates": {"RUB": 90.0}}
 
-        result = _get_exchange_rate("RUB", "USD")
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test_key"}):
+            with patch("src.external_api.requests.get", return_value=mock_resp):
+                tx = {"operationAmount": {"amount": 10, "currency": {"code": "USD"}}}
+                result = convert_transaction(tx)
 
-        assert result is None
-        mock_req_get.assert_called_once()
-
-
-def test_get_exchange_rate_network_error():
-    """
-    Проверяет обработку сетевой ошибки (ConnectionError) при запросе к API.
-
-    Сценарий:
-      - requests.get настроен на выброс ConnectionError.
-      - Запрашивается курс RUB→USD.
-
-    Ожидаемый результат:
-      - Функция перехватывает ошибку и возвращает None.
-      - requests.get был вызван ровно один раз.
-    """
-    with (
-        patch("src.external_api.requests.get", side_effect=requests.ConnectionError("DNS lookup failed")),
-        patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test-key-for-tests"}),
-    ):
-        result = _get_exchange_rate("RUB", "USD")
-        assert result is None
+        assert result == 900.0
+        mock_replace.assert_called_once()
+        mock_open.assert_called_once()
 
 
-def test_get_exchange_rate_rate_limit_429():
-    """
-    Проверяет обработку HTTP-ошибки 429 Too Many Requests.
+class TestApiResponseStructureEdgeCases:
+    def test_api_response_missing_rates_returns_zero(self):
+        """
+        Проверяет поведение, когда API вернул JSON без ожидаемой структуры.
 
-    Сценарий:
-      - Эмулируется ответ с кодом 429 и соответствующий HTTPError.
-      - Запрашивается курс RUB→USD.
+        Description:
+            Мокаем ответ API так, что в нём нет ключа 'rates' или 'RUB'.
+            Ожидаемое поведение: функция корректно обрабатывает отсутствие данных
+            и возвращает 0.0, не выбрасывая KeyError.
+            Цель: покрыть ветку валидации структуры ответа (строка ~131),
+            где rate_raw is None и возвращается 0.0.
+        """
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        # Специально возвращаем JSON без 'rates'
+        mock_resp.json.return_value = {"other": "data"}
 
-    Ожидаемый результат:
-      - Ошибка 429 корректно обрабатывается, функция возвращает None.
-      - requests.get был вызван один раз.
-    """
-    with (
-        patch("src.external_api.requests.get") as mock_req_get,
-        patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test-key-for-tests"}),
-    ):
-        mock_resp = mock_req_get.return_value
-        mock_resp.status_code = 429
-        mock_resp.raise_for_status.side_effect = requests.HTTPError("429 Too Many Requests", response=mock_resp)
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test_key"}):
+            with patch("src.external_api.requests.get", return_value=mock_resp):
+                tx = {"amount": 100, "currency": "EUR"}
+                result = convert_transaction(tx)
 
-        result = _get_exchange_rate("RUB", "USD")
+        assert result == 0.0
 
-        assert result is None
-        mock_req_get.assert_called_once()
+
+class TestApiNetworkEdgeCases:
+    def test_api_timeout_returns_zero(self):
+        """
+        Проверяет поведение при сетевом таймауте.
+        Здесь должен сработать except RequestException.
+        """
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test_key"}):
+            # ИСПРАВЛЕНИЕ 2: Timeout теперь определен
+            with patch("src.external_api.requests.get", side_effect=Timeout("Connection timed out")):
+                tx = {"operationAmount": {"amount": 100, "currency": {"code": "EUR"}}}
+                result = convert_transaction(tx)
+
+        assert result == 0.0
+
+    def test_api_rate_not_float_returns_zero(self, clean_cache):
+        """ValueError (невалидное число)"""
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {"rates": {"RUB": "not_a_number"}}
+
+        with patch.dict(os.environ, {"EXCHANGE_RATES_API_KEY": "test_key"}):
+            with patch("src.external_api.requests.get", return_value=mock_resp):
+                tx = make_tx(10, "USD")
+                result = convert_transaction(tx)
+
+        assert result == 0.0

@@ -98,11 +98,8 @@ poetry run isort .
 
 - src/utils
   - load_transactions(file_path: str) -> List[Dict[str, Any]] — Загружает список транзакций из JSON-файла  
-  - normalize_transaction(tx: Dict[str, Any]) -> Dict[str, Any] —  Приводит транзакцию из сложной структуры JSON к плоскому виду.
 - src/external_api
-  - _get_exchange_rate(base_currency: str, target_currency: str) -> Optional[float] — Получает курс валюты через Exchange Rates Data API.
-      Возвращает итератор описаний операций (description). Если описание отсутствует или пусто — возвращает "Без описания".
-  - convert_transaction_to_rub(transaction: Dict[str, Any]) -> float — Конвертирует сумму транзакции в рубли по актуальному курсу.
+  - convert_transaction(transaction: Dict[str, Any]) -> float — Конвертирует сумму транзакции в рубли по актуальному курсу.
 
 
 ---
