@@ -34,7 +34,7 @@ def load_transactions(file_path: str) -> List[Dict[str, Any]]:
     try:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
-    except json.JSONDecodeError, UnicodeDecodeError, OSError, FileNotFoundError:
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError, FileNotFoundError):
         # Невалидный JSON или проблема с чтением — возвращаем пустой список
         return []
 

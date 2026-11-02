@@ -49,7 +49,7 @@ def convert_transaction(transaction: Dict[str, Any]) -> float:
 
     try:
         amount_float = float(raw_amount)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return 0.0
 
     # Нормализация валюты
@@ -130,7 +130,7 @@ def convert_transaction(transaction: Dict[str, Any]) -> float:
             # Ошибка сети/API — возвращаем 0.0, кэш не трогаем
             return 0.0
 
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             return 0.0
 
     return round(amount_float * rate, 2)

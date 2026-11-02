@@ -1,4 +1,4 @@
-# constants.py
+# src/constants.py
 from typing import FrozenSet, Literal
 
 # Префикс → тип сущности: "account" для счёта, "card" для карты
