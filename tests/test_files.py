@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
 import pytest
 
@@ -39,6 +41,21 @@ def test_reading_transactions_csv_wrong_sep(tmp_path):
     assert list(result[0].keys()) == ["id,amount"]
 
 
+def test_reading_transactions_csv_calls_read_csv():
+    """Функция вызывает pd.read_csv с разделителем ';' и преобразует результат."""
+    mock_df = MagicMock()
+    mock_df.where.return_value = mock_df  # df.where(...) возвращает тот же df
+    mock_df.to_dict.return_value = [{"id": 1, "amount": 100.5}]
+
+    with patch("pandas.read_csv", return_value=mock_df) as mock_read:
+        result = reading_transactions_csv("fake_path.csv")
+
+    mock_read.assert_called_once_with("fake_path.csv", sep=";")
+    assert result == [{"id": 1, "amount": 100.5}]
+    mock_df.where.assert_called_once()
+    mock_df.to_dict.assert_called_once_with(orient="records")
+
+
 """ Тесты для Excel """
 
 
@@ -70,6 +87,20 @@ def test_reading_transactions_xlsx_corrupted(tmp_path):
 
     with pytest.raises(Exception):
         reading_transactions_xlsx(str(file))
+
+
+def test_reading_transactions_xlsx_calls_read_excel():
+    """Функция вызывает pd.read_excel с переданным путём."""
+    mock_df = MagicMock()
+    mock_df.where.return_value = mock_df
+    mock_df.to_dict.return_value = [{"id": 2, "amount": 250.0}]
+
+    with patch("pandas.read_excel", return_value=mock_df) as mock_read:
+        result = reading_transactions_xlsx("fake_path.xlsx")
+
+    mock_read.assert_called_once_with("fake_path.xlsx")
+    assert result == [{"id": 2, "amount": 250.0}]
+    mock_df.to_dict.assert_called_once_with(orient="records")
 
 
 """ Тесты для NaN """
