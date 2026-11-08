@@ -2,7 +2,8 @@
 
 from datetime import datetime
 
-from . import common, masks
+from src import common, masks
+
 from .constants import PREFIX_TO_TYPE, VALID_CARD_PREFIXES
 
 
@@ -92,13 +93,13 @@ def mask_account_card(in_argument: str) -> str:
 
     if entity_type == "account":
         number_account = masks.get_mask_account(number_argument)
-        if number_account == "Не корректный номер банковского счета":
+        if number_account == "":
             return "Не корректный номер банковского счета"
         return f"{prefix_argument} {number_account}"
 
     # entity_type == "card"
     number_card = masks.get_mask_card_number(number_argument)
-    if number_card == "Не корректный номер карты":
+    if number_card == "":
         return "Не корректные данные"
     return f"{prefix_argument} {number_card}"
 
