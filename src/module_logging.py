@@ -7,9 +7,10 @@ from pathlib import Path
 def setup_logger(name: str, log_file: str, level: int = logging.DEBUG) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    logger.propagate = False
 
     # Защита от дублирования хендлеров при многократном вызове
-    if logger.hasHandlers():
+    if logger.handlers:
         return logger
 
     Path(log_file).parent.mkdir(parents=True, exist_ok=True)

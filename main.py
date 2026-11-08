@@ -2,11 +2,11 @@
 
 from dotenv import load_dotenv
 
-from src import masks, utils, files
+# from src import files, masks, utils
 
 load_dotenv()
 
-# # Загружаем все транзакции (это список)
+# Загружаем все транзакции (это список)
 # transactions = utils.load_transactions("data/operations.json")
 # print(transactions[1])
 #
@@ -20,7 +20,7 @@ load_dotenv()
 #     converted_results.append(result)
 #
 # print(converted_results)
-
+#
 # print(masks.get_mask_card_number("1596837868705199"))
 # print(masks.get_mask_card_number(""))
 # print(masks.get_mask_card_number("15968"))
@@ -35,9 +35,9 @@ load_dotenv()
 # print(utils.load_transactions(""))
 # print(utils.load_transactions("operations.json"))
 # print(utils.load_transactions("data/rates_cache.json"))
-
+#
 # test_csv = files.reading_transactions_csv("data/transactions.csv")
 # print(test_csv[0])
 # files.reading_transactions_csv("data/transactions.csv")
-test_xlsx = files.reading_transactions_xlsx("data/transactions_excel.xlsx")
-print(test_xlsx[0])
+# test_xlsx = files.reading_transactions_xlsx("data/transactions_excel.xlsx")
+# print(test_xlsx[0])
