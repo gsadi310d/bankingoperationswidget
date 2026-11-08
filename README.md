@@ -7,7 +7,7 @@
 ---
 
 ## Что нового
-
+- Добавлен модуль `files.py` для считывания CSV и Excel файлов
 - Добавлен модуль `module_logging.py` для централизованной инициализации логирования.
 - Логи теперь перезаписываются при каждом запуске приложения (режим `mode='w'`).
 - Логгер автоматически создаёт родительские директории для файла лога.
@@ -108,6 +108,9 @@ poetry run isort .
   - convert_transaction(transaction: Dict[str, Any]) -> float — Конвертирует сумму транзакции в рубли по актуальному курсу.
 - src/module_logging.py
   - def setup_logger(name: str, log_file: str, level: int = logging.DEBUG) - Подключение модуля логирования к другому модулю.
+- src/files
+  - reading_transactions_csv(file_csv: str) -> List[Dict[str, Any]] — Считывает финансовые операции из CSV-файла
+  - reading_transactions_xlsx(file_xlsx: str) -> List[Dict[str, Any]] — Считывает финансовые операции из xlsx-файла
 
 ---
 
@@ -125,6 +128,7 @@ poetry run isort .
 │   ├── utils.py           # функции для работы с JSON-файлами транзакций 
 │   ├── external_api.      # функции для конвертации валют 
 │   ├── module_loggiing.py # функции подключение модуля логтрования
+│   ├── files.py           # функции конвертирования CSV и Excel файлов
 │   └── common.py          # общие утилиты
 ├── tests/
 │   ├── __init__.py
@@ -135,6 +139,8 @@ poetry run isort .
 │   ├── test_masks.py           # тесты маскирования
 │   ├── test_widget.py          # тесты маскировани и работы с датами
 │   ├── test_utils.py           # тесты проверки json-файлов
+│   ├── test_files.py           # тесты проверки конвертирования CSV и Excel файлов
+│   ├── test_logging.py         # тесты проверки логирования
 │   ├── test_external_api.py    # тесты проверки конвертации валюты 
 │   └── test_processing.py      # тесты фильтрации и сортировки
 ├── pyproject.toml         # конфигурация Poetry и метаданные проекта
