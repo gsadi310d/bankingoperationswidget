@@ -2,7 +2,7 @@
 
 from dotenv import load_dotenv
 
-# from src import files, masks, utils
+from src import files, masks, utils, filter
 
 load_dotenv()
 
@@ -36,8 +36,13 @@ load_dotenv()
 # print(utils.load_transactions("operations.json"))
 # print(utils.load_transactions("data/rates_cache.json"))
 #
-# test_csv = files.reading_transactions_csv("data/transactions.csv")
-# print(test_csv[0])
-# files.reading_transactions_csv("data/transactions.csv")
-# test_xlsx = files.reading_transactions_xlsx("data/transactions_excel.xlsx")
-# print(test_xlsx[0])
+test_csv = files.reading_transactions_csv("data/transactions.csv")
+print(test_csv[0])
+files.reading_transactions_csv("data/transactions.csv")
+test_xlsx = files.reading_transactions_xlsx("data/transactions_excel.xlsx")
+print(test_xlsx[0])
+test_search = filter.process_bank_search(test_csv, "Перевод организации")
+print(test_search[0])
+test_filter = filter.process_bank_operations(test_csv,
+                                             ["Перевод с карты на карту", 'Перевод со счета на счет'])
+print(test_filter)
