@@ -7,6 +7,7 @@
 ---
 
 ## Что нового
+- Добавлен модуль `filter.py` для подсчета и поиска банковских операций
 - Добавлен модуль `files.py` для считывания CSV и Excel файлов
 - Добавлен модуль `module_logging.py` для централизованной инициализации логирования.
 - Логи теперь перезаписываются при каждом запуске приложения (режим `mode='w'`).
@@ -111,6 +112,9 @@ poetry run isort .
 - src/files
   - reading_transactions_csv(file_csv: str) -> List[Dict[str, Any]] — Считывает финансовые операции из CSV-файла
   - reading_transactions_xlsx(file_xlsx: str) -> List[Dict[str, Any]] — Считывает финансовые операции из xlsx-файла
+- src/filter
+  - process_bank_search(data: List[Dict[str, Any]], search: str) -> List[Dict[str, Any]] — Возвращает операции, в описании которых есть строка поиска
+  - process_bank_operations(data: List[Dict[str, Any]], categories: List[str]) -> Dict[Any, int] — Считает количество операций в каждой из заданных категорий
 
 ---
 
@@ -129,6 +133,7 @@ poetry run isort .
 │   ├── external_api.      # функции для конвертации валют 
 │   ├── module_loggiing.py # функции подключение модуля логтрования
 │   ├── files.py           # функции конвертирования CSV и Excel файлов
+│   ├── filter.py          # функции для подсчета и поиска банковских операций
 │   └── common.py          # общие утилиты
 ├── tests/
 │   ├── __init__.py
@@ -140,6 +145,7 @@ poetry run isort .
 │   ├── test_widget.py          # тесты маскировани и работы с датами
 │   ├── test_utils.py           # тесты проверки json-файлов
 │   ├── test_files.py           # тесты проверки конвертирования CSV и Excel файлов
+│   ├── test_filter.py          # тесты проверки подсчета и поиска банковских операций
 │   ├── test_logging.py         # тесты проверки логирования
 │   ├── test_external_api.py    # тесты проверки конвертации валюты 
 │   └── test_processing.py      # тесты фильтрации и сортировки
