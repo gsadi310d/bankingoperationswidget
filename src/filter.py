@@ -1,8 +1,9 @@
 import re
 from collections import Counter
+from typing import Any, Dict, List
 
 
-def process_bank_search(data:list[dict], search:str)->list[dict]:
+def process_bank_search(data: List[Dict[str, Any]], search: str) -> List[Dict[str, Any]]:
     """Возвращает операции, в описании которых есть строка поиска.
 
     Поиск регистронезависимый, использует регулярные выражения.
@@ -11,14 +12,14 @@ def process_bank_search(data:list[dict], search:str)->list[dict]:
     :param search: строка поиска
     :return: список словарей с подходящими операциями
     """
-    pattern = re.escape(search)  # экранируем спецсимволы регулярок в запросе
+    pattern = re.compile(re.escape(search), re.IGNORECASE)
     return [
         item for item in data
-        if re.search(pattern, str(item.get("description", "")), re.IGNORECASE)
+        if pattern.search(str(item.get("description", "")))
     ]
 
 
-def process_bank_operations(data: list[dict], categories: list[str]) -> dict:
+def process_bank_operations(data: List[Dict[str, Any]], categories: List[str]) -> Dict[Any, int]:
     """Считает количество операций в каждой из заданных категорий.
 
     Категория операции определяется по полю description.
@@ -27,8 +28,9 @@ def process_bank_operations(data: list[dict], categories: list[str]) -> dict:
     :param categories: список названий категорий
     :return: словарь {категория: количество операций}
     """
+    categories_set = set(categories)
     matched = [
         item.get("description") for item in data
-        if item.get("description") in categories
+        if item.get("description") in categories_set
     ]
     return dict(Counter(matched))

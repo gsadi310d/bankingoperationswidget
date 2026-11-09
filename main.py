@@ -2,7 +2,7 @@
 
 from dotenv import load_dotenv
 
-from src import files, masks, utils, filter
+from src import files, filter, masks, utils
 
 load_dotenv()
 
