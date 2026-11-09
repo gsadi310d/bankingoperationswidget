@@ -54,3 +54,22 @@ def load_transactions(file_path: str) -> List[Dict[str, Any]]:
     logger.info("Функция отработала успешно")
     # Оставляем только словари, остальные элементы игнорируем
     return [item for item in data if isinstance(item, dict)]
+
+
+def get_amount_info(item: dict[str, Any]) -> tuple[Any, str]:
+    """Достаёт сумму и валюту из транзакции (поддерживает CSV и JSON формат).
+
+    :param item: словарь транзакции.
+    :return: кортеж (сумма, код валюты). Если данных нет — (None, "").
+    """
+    # Формат CSV: плоские поля
+    if item.get("amount") is not None:
+        return item.get("amount"), item.get("currency_code") or ""
+
+    # Формат JSON: вложенная структура operationAmount
+    op_amount = item.get("operationAmount") or {}
+    amount_value = op_amount.get("amount")
+    currency_info = op_amount.get("currency") or {}
+    currency_code = currency_info.get("code", "")
+
+    return amount_value, currency_code

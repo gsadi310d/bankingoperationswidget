@@ -16,6 +16,7 @@ PREFIX_TO_TYPE: dict[str, Literal["account", "card"]] = {
     "Visa Business": "card",
     "Visa Corporate": "card",
     # MasterCard
+    "Mastercard": "card",
     "MasterCard": "card",
     "MasterCard Standard": "card",
     "MasterCard Gold": "card",

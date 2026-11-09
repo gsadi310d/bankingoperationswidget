@@ -15,10 +15,13 @@ def filter_by_currency(transactions: Iterable[Dict[str, Any]], currency_code: st
     target_code = currency_code.upper()
 
     for transaction in transactions:
-        # Безопасный доступ к вложенным ключам с проверкой существования
-        amount_data = transaction.get("operationAmount", {})
-        currency_data = amount_data.get("currency", {})
-        code = currency_data.get("code")
+        # Вложенный формат (JSON), при отсутствии — плоский (CSV/Excel)
+        code = (
+            transaction.get("operationAmount", {})
+            .get("currency", {})
+            .get("code")
+            or transaction.get("currency_code")
+        )
 
         if code and code.upper() == target_code:
             yield transaction

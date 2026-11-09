@@ -197,7 +197,13 @@ def test_coverage_remaining(input_str: str, expected: str) -> None:
     assert result == expected, f"Для {input_str!r} ожидалось {expected!r}, получено {result!r}"
 
 
+def test_mask_account_card_real_nan():
+    """Пустая ячейка CSV при чтении через pandas приходит как float('nan')."""
+    assert widget.mask_account_card(float("nan")) == "Отсутствуют данные"
+
+
 """Тесты get_date"""
+
 
 valid_dates = [
     "14:30:15",
@@ -256,3 +262,19 @@ def test_get_date_space() -> None:
 def test_get_date_int() -> None:
     result = widget.get_date(12345)
     assert result.startswith("Неверный формат ISO:")
+
+
+""" has_value """
+
+
+@pytest.mark.parametrize("value, expected", [
+    ("Visa 4111111111111111", True),
+    (None, False),
+    ("", False),
+    (float("nan"), False),
+    ("nan", False),      # ← строка 136 — эта ветка
+    ("None", False),
+    ("   ", False),
+])
+def test_has_value(value, expected):
+    assert widget.has_value(value) == expected
