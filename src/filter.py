@@ -1,3 +1,5 @@
+# src/filter.py для подсчета и поиска банковских операций
+
 import re
 from collections import Counter
 from typing import Any, Dict, List

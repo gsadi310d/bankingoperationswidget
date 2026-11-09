@@ -1,3 +1,5 @@
+# src/files.py для считывания CSV и Excel файлов
+
 from typing import Any, Dict, List, cast
 
 import pandas as pd
