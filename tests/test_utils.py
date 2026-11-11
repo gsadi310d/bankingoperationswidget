@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src.utils import load_transactions
+from src.utils import get_amount_info, load_transactions
 
 
 @pytest.fixture
@@ -181,3 +181,29 @@ class TestLoadTransactionsErrorCases:
 
         result = load_transactions(file_path)
         assert result == []
+
+
+""" get_amount_info """
+
+
+@pytest.mark.parametrize("item, expected", [
+    # Формат CSV: плоские поля
+    ({"amount": 18687.0, "currency_code": "EUR"}, (18687.0, "EUR")),
+    ({"amount": 100, "currency_code": None}, (100, "")),          # без валюты
+    # Формат JSON: вложенная структура
+    (
+        {"operationAmount": {"amount": "67314.10",
+                             "currency": {"name": "руб.", "code": "RUB"}}},
+        ("67314.10", "RUB"),
+    ),
+    # JSON без operationAmount
+    ({}, (None, "")),
+    # operationAmount есть, currency пустая
+    ({"operationAmount": {"amount": "100"}}, ("100", "")),
+    # Приоритет CSV-полей, если есть и то, и другое
+    ({"amount": 5, "currency_code": "USD",
+      "operationAmount": {"amount": "999", "currency": {"code": "RUB"}}},
+     (5, "USD")),
+])
+def test_get_amount_info(item, expected):
+    assert get_amount_info(item) == expected

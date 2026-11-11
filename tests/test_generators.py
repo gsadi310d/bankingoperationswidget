@@ -42,6 +42,17 @@ def test_filter_by_currency_iterator_behavior(usd_transactions):
     assert second["id"] == 3
 
 
+def test_filter_by_currency_flat_format():
+    """Фильтр находит валюту в плоском ключе currency_code (данные из CSV)."""
+    transactions = [
+        {"id": 1, "currency_code": "RUB"},
+        {"id": 2, "currency_code": "USD"},
+    ]
+    result = list(filter_by_currency(transactions, "RUB"))
+    assert len(result) == 1
+    assert result[0]["id"] == 1
+
+
 """transaction_descriptions"""
 
 
