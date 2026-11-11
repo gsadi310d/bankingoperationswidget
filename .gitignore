@@ -37,7 +37,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
-htmlcov/
+#htmlcov/
 .tox/
 .nox/
 .coverage
@@ -173,6 +173,9 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+data/rates_cache.json
+data/rates_cache.json.tmp
 
 # Pyre type checker
 .pyre/
